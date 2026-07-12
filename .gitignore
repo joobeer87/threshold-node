@@ -25,6 +25,15 @@ logs/
 receipts/
 *.log
 
+# Real-world capture and video review (publish only an approved external link)
+media/raw/
+media/review/
+media/exports/
+*.heic
+*.m4v
+*.mov
+*.mp4
+
 # Editors and operating systems
 .idea/
 .vscode/

@@ -107,6 +107,13 @@ reference/     non-runnable JSX visual reference for the future console
 The physical stop loop described in [`HARDWARE.md`](HARDWARE.md) is a prototype interlock,
 not a certified emergency-stop. Keep manufacturer controls and a physical power-isolation
 path. For vulnerability handling and public-demo rules, see [`SECURITY.md`](SECURITY.md)
-and [`docs/PRIVACY.md`](docs/PRIVACY.md).
+and [`docs/PRIVACY.md`](docs/PRIVACY.md). Real-room video follows the separate
+[`footage checklist`](docs/REAL-FOOTAGE-CHECKLIST.md) and stays out of Git.
+
+Contributions follow [`CONTRIBUTING.md`](CONTRIBUTING.md). The first-publish metadata and
+verification sequence is recorded in
+[`docs/PUBLICATION-CHECKLIST.md`](docs/PUBLICATION-CHECKLIST.md).
 
 Licensed under the MIT License.
+
+<!-- Curious operators: GET /.well-known/aurora -->

@@ -10,5 +10,7 @@
 | THS-F006 | GPT-5.6 capture proposal | Not implemented | Planned |
 | THS-F007 | Owner console | JSX visual reference only | Planned |
 | THS-F008 | Prototype physical stop loop | Hardware plan only | Planned |
+| THS-F009 | Aurora public signature | Hidden static route + safety test | Runnable |
+| THS-F010 | Real-footage privacy workflow | Checklist + Git/scanner boundary | Runnable |
 
-Bootstrap impact: THS-F001 through THS-F004.
+Current publication-prep impact: THS-F004, THS-F009, and THS-F010.

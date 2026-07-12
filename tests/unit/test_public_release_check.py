@@ -44,3 +44,31 @@ def test_forbidden_environment_file_fails(tmp_path: Path):
     result, report = run_scan(tmp_path)
     assert result.returncode == 1
     assert report["findings"][0]["rule"] == "forbidden_path"
+
+
+def test_real_world_video_file_fails(tmp_path: Path):
+    (tmp_path / "room-demo.mp4").write_bytes(b"synthetic test bytes")
+    result, report = run_scan(tmp_path)
+    assert result.returncode == 1
+    assert report["findings"][0]["rule"] == "forbidden_path"
+
+
+def test_ignored_raw_media_workspace_is_not_a_public_candidate(tmp_path: Path):
+    raw = tmp_path / "media" / "raw"
+    raw.mkdir(parents=True)
+    (raw / "room-demo.mp4").write_bytes(b"local-only test bytes")
+    result, report = run_scan(tmp_path)
+    assert result.returncode == 0
+    assert report["status"] == "pass"
+
+
+def test_force_tracked_raw_media_fails(tmp_path: Path):
+    raw = tmp_path / "media" / "raw"
+    raw.mkdir(parents=True)
+    video = raw / "room-demo.mp4"
+    video.write_bytes(b"local-only test bytes")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-f", str(video)], cwd=tmp_path, check=True)
+    result, report = run_scan(tmp_path)
+    assert result.returncode == 1
+    assert report["findings"][0]["rule"] == "tracked_private_media"

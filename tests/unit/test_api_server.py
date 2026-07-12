@@ -46,6 +46,20 @@ def test_health_is_truthful_pre_alpha():
     assert payload["adapters"] == []
 
 
+def test_aurora_easter_egg_is_public_safe_and_honest():
+    payload = server.aurora_signature()
+    assert payload["principle"] == "authority_before_autonomy"
+    assert payload["boundary"]["fail_closed"] is True
+    assert payload["safety_receipt"] == {
+        "secret_material_returned": False,
+        "unauthorized_action_executed": False,
+        "private_control_plane_exposed": False,
+    }
+    assert "not embedded" in payload["disclosure"]
+    route = next(route for route in server.app.routes if route.path == "/.well-known/aurora")
+    assert route.include_in_schema is False
+
+
 def test_grant_endpoint_fails_closed():
     assert exception_status(server.housefile, "g-neo", None) == 401
     assert exception_status(

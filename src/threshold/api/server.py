@@ -76,6 +76,28 @@ def health():
         "demo_mode": SETTINGS.demo_mode,
     }
 
+
+@app.get("/.well-known/aurora", include_in_schema=False)
+def aurora_signature():
+    """Public design signature, not an embedded private AuroraOS runtime."""
+    return {
+        "signature": "AURORA",
+        "kind": "public_demo_easter_egg",
+        "principle": "authority_before_autonomy",
+        "boundary": {
+            "owner_authority_required": True,
+            "model_output_is_proposal": True,
+            "fail_closed": True,
+            "receipts_required": True,
+        },
+        "safety_receipt": {
+            "secret_material_returned": False,
+            "unauthorized_action_executed": False,
+            "private_control_plane_exposed": False,
+        },
+        "disclosure": "Public signature only; AuroraOS is not embedded in this build.",
+    }
+
 @app.get("/housefile")
 def housefile(
     grant: str,

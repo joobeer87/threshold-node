@@ -39,4 +39,5 @@ Day map: P0–P1→D1-2 · P2→D3-4 · P3→D4-6 · P4→D5+7 · P5→D6-8 · P
 | THS-0070 | P6 | stretch | Receipt hash chain | each receipt carries prev-hash | hardware/receipt.py | 0043 | T3 | 45 | TODO | 0 | tamper-evident tape |
 | THS-0071 | P6 | stretch | mDNS discovery `_threshold._tcp` | agents find the node | api/ | 0014 | T3 | 30 | TODO | 0 | |
 | THS-0072 | P6 | stretch | Quiet-hours command gating | reject command:* inside quietHours | grants/manager.py | 0013 | T2 | 30 | TODO | 0 | |
-| THS-0073 | P6 | stretch | Synthetic leak-test easter egg | offline canary, 0-byte disclosure proof, hash-only receipt | docs/LEAK-TEST.md | 0051 | T3 | 45 | TODO | 0 | never use provider-shaped secrets |
+| THS-0073 | P6 | polish | Aurora signature easter egg | hidden public-safe route, authority-before-autonomy receipt | docs/AURORA-EASTER-EGG.md | 0014 | T3 | 30 | DONE | 95 | signature only; private AuroraOS not embedded |
+| THS-0074 | P6 | media | Real-footage privacy gate | staged-room checklist, metadata strip, frame/audio review, external publish | docs/REAL-FOOTAGE-CHECKLIST.md | 0060 | T1 | 45 | DONE | 90 | raw/review/export video stays out of Git |

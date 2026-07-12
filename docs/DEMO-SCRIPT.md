@@ -11,5 +11,9 @@ end-to-end test or captured local proof. Use synthetic house and actor data thro
 58–68s Operator presses the mushroom interlock. The demo robot parks. Display: TRIPPED. Printer: STOP. Two seconds of silence.
 68–75s Ledger scrolls. End card: "Your home's data belongs to the home. THRESHOLD."
 
-Optional post-credit: run the offline scene in `LEAK-TEST.md`. Keep it out of the core 75
-seconds unless the main permission loop is already complete and legible.
+Optional post-credit: reveal the public-safe Aurora signature from
+`AURORA-EASTER-EGG.md`. Keep it out of the core 75 seconds unless the main permission loop
+is already complete and legible.
+
+Real-room footage must pass `REAL-FOOTAGE-CHECKLIST.md`; all visible housefile, receipt,
+actor, and terminal data remains synthetic.

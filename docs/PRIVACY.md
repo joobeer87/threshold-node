@@ -10,12 +10,14 @@ real household. The public repository therefore ships only fictional data.
 - Fixtures explicitly labeled `synthetic: true`.
 - Sanitized receipts containing counts, rule IDs, hashes, and pass/fail status.
 - Screenshots or demo video frames created entirely from synthetic fixtures.
+- A link to a final real-room video only after the footage checklist is complete.
 
 ## What stays local
 
 - Populated environment files and bearer tokens.
 - Real housefiles, room names, schedules, maps, inventory, quirks, and system details.
 - Raw camera/audio frames and model prompts containing household context.
+- Raw, review, and exported real-room media files; publish the approved video externally.
 - Matter fabrics, Home Assistant tokens, device IDs, OAuth material, network captures,
   local paths, receipts, and ledger bodies.
 
@@ -36,3 +38,7 @@ raw payloads, URLs, device identifiers, or private notes.
 
 Run `make check`, inspect `git ls-files`, and review the staged diff. The scanner output is
 sanitized by design and must report zero findings before publication.
+
+Real-room video is allowed for the submission, but it does not make real dwelling data an
+acceptable code fixture. Follow `docs/REAL-FOOTAGE-CHECKLIST.md` and keep the repo's visible
+UI, receipts, actor names, and housefile synthetic.

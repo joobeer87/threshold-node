@@ -23,3 +23,5 @@ No version is security-supported yet. The `0.1.x` line is a Build Week prototype
 - Treat receipts, ledgers, camera frames, and device integrations as sensitive local data.
 - Run `make check` against the exact staged tree before any push.
 - Do not use the prototype stop loop as an emergency-stop or life-safety system.
+- Keep raw or review real-room footage out of Git and complete the footage privacy checklist
+  before publishing a video link.

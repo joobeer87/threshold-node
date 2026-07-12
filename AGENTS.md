@@ -5,7 +5,8 @@ This repository is intended to become public. Treat all edits as publication can
 ## Boundaries
 
 - Never add real credentials, populated environment files, private URLs, home-directory
-  paths, real dwelling data, camera frames, device identifiers, receipts, or ledgers.
+  paths, real dwelling data, raw/review video, camera frames, device identifiers, receipts,
+  or ledgers.
 - Use only fixtures labeled synthetic. Never make a fake credential resemble a provider
   token.
 - Keep owner authentication separate from per-grant authentication.
@@ -22,5 +23,6 @@ This repository is intended to become public. Treat all edits as publication can
 4. Run focused tests, then `make check` before a commit.
 5. Review `git diff --cached` and `git ls-files` before any push.
 
-No hosted deploy, provider write, secret access, hardware actuation, or public push is
-authorized by these instructions.
+This file does not authorize a hosted deploy, provider write, secret access, hardware
+actuation, or public push. Those require an explicit user request plus the applicable
+operator approval gate.

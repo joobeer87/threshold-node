@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,11 @@ EXCLUDED_DIRS = {
     "node_modules",
     "venv",
 }
+EXCLUDED_PATH_PREFIXES = {
+    ("media", "exports"),
+    ("media", "raw"),
+    ("media", "review"),
+}
 ALLOWED_EXAMPLE_PATHS = {"config/env.example"}
 FORBIDDEN_NAMES = {
     ".env",
@@ -32,7 +38,16 @@ FORBIDDEN_NAMES = {
     "id_rsa",
     "secrets.json",
 }
-FORBIDDEN_SUFFIXES = {".key", ".p12", ".pfx", ".pem"}
+FORBIDDEN_SUFFIXES = {
+    ".heic",
+    ".key",
+    ".m4v",
+    ".mov",
+    ".mp4",
+    ".p12",
+    ".pem",
+    ".pfx",
+}
 MAX_FILE_BYTES = 2 * 1024 * 1024
 
 
@@ -99,15 +114,43 @@ def _allowed_match(rule: Rule, match: re.Match[str]) -> bool:
     return False
 
 
+def _tracked_paths(root: Path) -> set[str]:
+    if not (root / ".git").exists():
+        return set()
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=root,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return set()
+    return {
+        value.decode("utf-8")
+        for value in result.stdout.split(b"\0")
+        if value
+    }
+
+
 def scan(root: Path) -> dict[str, object]:
     findings: list[dict[str, object]] = []
     scanned_files = 0
     skipped_binary = 0
 
+    for relative in sorted(_tracked_paths(root)):
+        parts = Path(relative).parts
+        if parts[:2] in EXCLUDED_PATH_PREFIXES:
+            findings.append(
+                {"path": relative, "line": None, "rule": "tracked_private_media"}
+            )
+
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root).as_posix()
         parts = path.relative_to(root).parts
-        if any(part in EXCLUDED_DIRS or part.endswith(".egg-info") for part in parts):
+        if (
+            any(part in EXCLUDED_DIRS or part.endswith(".egg-info") for part in parts)
+            or parts[:2] in EXCLUDED_PATH_PREFIXES
+        ):
             continue
         if not path.is_file():
             continue

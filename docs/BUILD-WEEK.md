@@ -43,3 +43,6 @@ owner confirmation → policy gate.
 Codex is being used to build and review the project. GPT-5.6 is not yet wired into the
 runtime. Do not describe model integration, robot relay, persistent audit, or hardware
 latency as complete until the code and demo evidence exist.
+
+Real-room footage is encouraged for impact, provided it passes
+`REAL-FOOTAGE-CHECKLIST.md` and every visible data surface remains synthetic.
