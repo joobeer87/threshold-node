@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threshold.local/schema/ths-0.1.json",
+  "title": "Housefile THS-0.1",
+  "type": "object",
+  "required": ["schema", "dwelling", "zones", "policies"],
+  "properties": {
+    "schema": {"const": "ths/0.1"},
+    "rev": {"type": "string"},
+    "fixture": {"type": "object", "required": ["synthetic", "notice"],
+      "properties": {
+        "synthetic": {"const": true},
+        "notice": {"type": "string", "minLength": 1}}},
+    "dwelling": {"type": "object", "required": ["name"],
+      "properties": {"name": {"type": "string"}, "type": {"type": "string"}}},
+    "zones": {"type": "array", "items": {"type": "object",
+      "required": ["id", "name", "access", "boundary"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"},
+        "access": {"enum": ["open", "restricted", "no-go"]},
+        "boundary": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+        "note": {"type": "string"}, "outdoor": {"type": "boolean"}}}},
+    "systems": {"type": "array", "items": {"type": "object",
+      "required": ["id", "name", "zone", "tag", "detail"],
+      "properties": {"tag": {"enum": ["water", "power", "hvac", "net"]}}}},
+    "inventory": {"type": "array", "items": {"type": "object",
+      "required": ["id", "name", "zone"],
+      "properties": {"flags": {"type": "array", "items": {"type": "string"}}}}},
+    "quirks": {"type": "array", "items": {"type": "object", "required": ["id", "zone", "text"]}},
+    "policies": {"type": "object", "required": ["quietHours"],
+      "properties": {
+        "quietHours": {"type": "object", "required": ["start", "end"]},
+        "teleop": {"enum": ["per-session", "never"]},
+        "residency": {"type": "string"}}}
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "task": "public_initial_repo_bootstrap",
+  "authority": "L2_local_only",
+  "delivery_gate": "warn",
+  "impacted_features": [
+    "THS-F001",
+    "THS-F002",
+    "THS-F003",
+    "THS-F004"
+  ],
+  "proof": {
+    "automated_tests": "pass_27",
+    "compile_check": "pass",
+    "public_tree_scan": "pass_0_findings_58_tracked_files",
+    "external_secret_scan": "pass_0_blockers_0_warnings_88_scanned_files",
+    "hosted_ci": "pending_first_push"
+  },
+  "docs_impact": "docs/delivery/DOCS_IMPACT_MATRIX.md",
+  "feature_index": "docs/delivery/FEATURE_INDEX.md",
+  "qa_matrix": "docs/delivery/QA_MATRIX.md",
+  "human_leverage": {
+    "status": "pass",
+    "summary": "One-command local validation and simulator-first fallbacks reduce setup and review burden."
+  },
+  "blocked_claims": [
+    "GPT-5.6 runtime integration",
+    "robot command relay",
+    "persistent append-only ledger",
+    "measured stop latency",
+    "certified safety behavior",
+    "Build Week multiple-submission eligibility"
+  ],
+  "secret_material_returned": false,
+  "hosted_or_provider_mutation": false
+}

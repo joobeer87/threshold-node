@@ -1,0 +1,181 @@
+{
+  "schema": "ths/0.1",
+  "rev": "A",
+  "fixture": {
+    "synthetic": true,
+    "notice": "Fictional demo data only; never replace this file with a real dwelling export."
+  },
+  "dwelling": {
+    "name": "Threshold Demo House (Synthetic)",
+    "type": "synthetic"
+  },
+  "zones": [
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "access": "open",
+      "boundary": [
+        0,
+        0,
+        150,
+        100
+      ]
+    },
+    {
+      "id": "living",
+      "name": "Living Room",
+      "access": "open",
+      "boundary": [
+        150,
+        0,
+        150,
+        100
+      ]
+    },
+    {
+      "id": "utility",
+      "name": "Utility",
+      "access": "open",
+      "boundary": [
+        300,
+        0,
+        100,
+        100
+      ],
+      "note": "Panel wall"
+    },
+    {
+      "id": "studio",
+      "name": "Demo Studio",
+      "access": "restricted",
+      "boundary": [
+        0,
+        100,
+        130,
+        100
+      ],
+      "note": "Synthetic restricted-window example"
+    },
+    {
+      "id": "office",
+      "name": "Office",
+      "access": "open",
+      "boundary": [
+        130,
+        100,
+        130,
+        100
+      ]
+    },
+    {
+      "id": "workshop",
+      "name": "Workshop",
+      "access": "no-go",
+      "boundary": [
+        260,
+        100,
+        140,
+        100
+      ],
+      "note": "Owner only."
+    },
+    {
+      "id": "backlawn",
+      "name": "Back Lawn",
+      "access": "open",
+      "boundary": [
+        0,
+        200,
+        400,
+        120
+      ],
+      "outdoor": true
+    },
+    {
+      "id": "garden",
+      "name": "Vegetable Garden",
+      "access": "no-go",
+      "boundary": [
+        300,
+        200,
+        100,
+        120
+      ],
+      "note": "Stay-out: seedlings",
+      "outdoor": true
+    }
+  ],
+  "systems": [
+    {
+      "id": "sys-water",
+      "name": "Demo water shutoff",
+      "zone": "utility",
+      "tag": "water",
+      "detail": "Synthetic marker W on the utility-room plan."
+    },
+    {
+      "id": "sys-power",
+      "name": "Demo breaker panel",
+      "zone": "utility",
+      "tag": "power",
+      "detail": "Synthetic circuit label K for the demo kitchen."
+    },
+    {
+      "id": "sys-hvac",
+      "name": "Demo HVAC filter",
+      "zone": "utility",
+      "tag": "hvac",
+      "detail": "Synthetic maintenance marker H."
+    }
+  ],
+  "inventory": [
+    {
+      "id": "inv-edge",
+      "name": "Edge compute demo unit",
+      "zone": "workshop",
+      "flags": [
+        "do-not-touch",
+        "high-value"
+      ],
+      "note": "Synthetic inventory item."
+    },
+    {
+      "id": "inv-sculpture",
+      "name": "Foam calibration sculpture",
+      "zone": "living",
+      "flags": [
+        "fragile"
+      ],
+      "note": "Synthetic fragile-object example."
+    },
+    {
+      "id": "inv-cookware",
+      "name": "Demo cookware",
+      "zone": "kitchen",
+      "flags": [
+        "never-soap"
+      ],
+      "note": "Synthetic handling-rule example."
+    }
+  ],
+  "quirks": [
+    {
+      "id": "q1",
+      "zone": "kitchen",
+      "text": "Synthetic obstacle marker A requires a slower approach."
+    },
+    {
+      "id": "q2",
+      "zone": "living",
+      "text": "Synthetic quiet-zone marker activates after 21:00."
+    }
+  ],
+  "policies": {
+    "quietHours": {
+      "start": "21:30",
+      "end": "06:30"
+    },
+    "teleop": "per-session",
+    "residency": "local-first"
+  }
+}
