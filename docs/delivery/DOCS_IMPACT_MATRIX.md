@@ -2,22 +2,22 @@
 
 | Surface | Impact | State |
 |---|---|---|
-| README | pre-alpha status, setup, framework, claims | Updated |
+| README | pre-alpha status, private intake usage, framework, claims | Updated for Wave 3 |
 | AGENTS.md | durable public-repo and validation rules | Added |
 | SECURITY.md | disclosure and demo boundaries | Added |
 | HARDWARE.md | GPIO correction and prototype warning | Updated |
 | SPEC-NODE + SPEC-THS | grant credential/time grammar, API responses, durable receipt boundary | Updated |
-| ARCHITECTURE | runnable ledger/mock flow versus target adapters and hardware | Updated |
-| PRIVACY | commit/model/receipt boundaries | Added |
+| ARCHITECTURE | local intake boundary separated from model proposal and canonical write | Updated for Wave 3 |
+| PRIVACY | capture storage, commit, model, and receipt boundaries | Updated for Wave 3 |
 | AURORA-EASTER-EGG | honest public Aurora framework signature | Replaced leak concept |
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0014/0015/0016/0035 completion evidence and dependencies | Updated |
-| BUILD-WEEK | Waves 1–2 runnable state and remaining submission work | Updated |
+| KANBAN | THS-0020 implementation status and validation boundary | Updated for Wave 3 |
+| BUILD-WEEK | local intake separated from planned model extraction | Updated for Wave 3 |
 | DEMO-SCRIPT | exact no-motion mock proof separated from target hardware video | Updated |
 | PUBLICATION-CHECKLIST | repeatable branch-push review with transport-neutral auth wording | Updated |
-| Delivery records | feature, QA, docs-impact, and scoped delivery receipt | Updated |
+| Delivery records | Wave 3 feature, QA, docs-impact, and scoped delivery receipt | Updated for Wave 3 |
 
-The public repository, feature branch, and draft pull request exist. Merge, deployment, and
-submission remain separate decisions.
+Wave 3 changes and local validation are complete on a feature branch. Push, pull request,
+merge, deployment, and submission remain separate delivery states.

@@ -24,10 +24,11 @@ EXCLUDED_DIRS = {
     "node_modules",
     "venv",
 }
-EXCLUDED_PATH_PREFIXES = {
-    ("media", "exports"),
-    ("media", "raw"),
-    ("media", "review"),
+PRIVATE_PATH_RULES = {
+    ("data", "capture"): "tracked_private_capture",
+    ("media", "exports"): "tracked_private_media",
+    ("media", "raw"): "tracked_private_media",
+    ("media", "review"): "tracked_private_media",
 }
 ALLOWED_EXAMPLE_PATHS = {"config/env.example"}
 FORBIDDEN_NAMES = {
@@ -115,22 +116,37 @@ def _allowed_match(rule: Rule, match: re.Match[str]) -> bool:
     return False
 
 
-def _tracked_paths(root: Path) -> set[str]:
+def _tracked_paths(root: Path) -> set[str] | None:
     if not (root / ".git").exists():
         return set()
-    result = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=root,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     if result.returncode != 0:
-        return set()
-    return {
-        value.decode("utf-8")
-        for value in result.stdout.split(b"\0")
-        if value
-    }
+        return None
+    try:
+        return {
+            value.decode("utf-8")
+            for value in result.stdout.split(b"\0")
+            if value
+        }
+    except UnicodeDecodeError:
+        return None
+
+
+def _private_path_rule(parts: tuple[str, ...]) -> str | None:
+    for prefix, rule in PRIVATE_PATH_RULES.items():
+        if parts[: len(prefix)] == prefix:
+            return rule
+    return None
 
 
 def scan(root: Path) -> dict[str, object]:
@@ -138,19 +154,27 @@ def scan(root: Path) -> dict[str, object]:
     scanned_files = 0
     skipped_binary = 0
 
-    for relative in sorted(_tracked_paths(root)):
-        parts = Path(relative).parts
-        if parts[:2] in EXCLUDED_PATH_PREFIXES:
-            findings.append(
-                {"path": relative, "line": None, "rule": "tracked_private_media"}
-            )
+    tracked_paths = _tracked_paths(root)
+    if tracked_paths is None:
+        findings.append(
+            {"path": "<git-index>", "line": None, "rule": "git_index_unavailable"}
+        )
+    else:
+        for relative in sorted(tracked_paths):
+            parts = Path(relative).parts
+            private_path_rule = _private_path_rule(parts)
+            if private_path_rule is not None:
+                redacted_path = "/".join((*parts[:2], "<private>"))
+                findings.append(
+                    {"path": redacted_path, "line": None, "rule": private_path_rule}
+                )
 
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root).as_posix()
         parts = path.relative_to(root).parts
         if (
             any(part in EXCLUDED_DIRS or part.endswith(".egg-info") for part in parts)
-            or parts[:2] in EXCLUDED_PATH_PREFIXES
+            or _private_path_rule(parts) is not None
         ):
             continue
         if not path.is_file():

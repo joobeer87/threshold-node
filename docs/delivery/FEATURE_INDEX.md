@@ -14,5 +14,8 @@
 | THS-F010 | Real-footage privacy workflow | Checklist + Git/scanner boundary | Runnable |
 | THS-F011 | Grant lifecycle and time policy | Issue/revoke, digest-only auth, expiry and one-time windows | Runnable pre-alpha |
 | THS-F012 | Synthetic mock-agent permission loop | Scoped read → allowed/not-relayed → no-go denial | Runnable |
+| THS-F013 | Privacy-first local capture intake | JPEG/PNG or MOV/MP4/M4V → bounded private JPEG batch; local proofs pass | Runnable locally; not a model integration |
 
-Current Waves 1–2 impact: THS-F002, THS-F003, THS-F005, THS-F011, and THS-F012.
+Current Wave 3 impact: THS-F004, THS-F010, and THS-F013. THS-F006 remains planned: local
+capture normalization is deliberately separate from model extraction and canonical
+housefile writes.
