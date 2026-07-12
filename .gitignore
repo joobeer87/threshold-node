@@ -24,6 +24,7 @@ data/
 logs/
 receipts/
 *.log
+*.jsonl
 
 # Real-world capture and video review (publish only an approved external link)
 media/raw/

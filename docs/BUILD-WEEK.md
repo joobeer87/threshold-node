@@ -1,48 +1,65 @@
-# OpenAI Build Week plan
+# Build Week notes
 
-Status checked: **2026-07-11**.
+Last checked: **2026-07-11**.
 
-The official OpenAI page says the challenge opens July 13 and submissions close July 21.
-The linked Devpost schedule currently gives the deadline as July 21 at 5:00 p.m. PDT. The
-official rules, tracks, and complete submission requirements are not published yet.
+The challenge opens July 13 and submissions close July 21. The Devpost schedule currently
+lists the deadline as July 21 at 5:00 p.m. PDT. The official rules, tracks, and complete
+submission requirements were not published at the last check.
 
 - Challenge: <https://openai.com/build-week/>
-- Devpost overview and judging criteria: <https://openai.devpost.com/>
-- Schedule: <https://openai.devpost.com/details/dates>
-- Rules gate: <https://openai.devpost.com/rules>
-- Resources gate: <https://openai.devpost.com/resources>
+- Devpost: <https://openai.devpost.com/>
+- Dates: <https://openai.devpost.com/details/dates>
+- Rules: <https://openai.devpost.com/rules>
+- Resources: <https://openai.devpost.com/resources>
 
-## Candidate-two gate
+## Two-project plan
 
-The current pages do not say whether one entrant may submit multiple projects. Do not
-submit Threshold Node as a second candidate until the July 13 rules explicitly permit it.
-Re-check eligibility, existing-project rules, categories, repository visibility, required
-materials, token availability, and video limits at the same time.
+I am building two candidate projects during the Build Week window. I want to take both far
+enough to judge them by working software, then put the final polish, video, and submission
+work behind the stronger project. Threshold Node can remain public as a prototype even if
+the other project becomes my final Build Week entry.
 
-## Fit to the published judging criteria
+I will choose based on:
 
-1. **Technological implementation:** make GPT-5.6 central to the phone-walk capture and
-   constrained plan proposal, with structured outputs, schema validation, and evals.
-2. **Design:** deliver one complete loop—capture proposal, owner confirmation, grant,
-   scoped robot read, denied no-go action, prototype stop, and receipt.
-3. **Potential impact:** demonstrate a specific household-robot privacy and authority
-   problem, not a general chat interface.
-4. **Quality of idea:** make the memorable object the physical threshold: a local policy
-   boundary that models can propose through but cannot bypass.
+- the strongest end-to-end demo;
+- meaningful use of OpenAI models rather than a decorative chat feature;
+- a problem and result that are clear in a short video;
+- the fewest fragile or unproven dependencies;
+- the best chance of reaching a polished, tested submission by the deadline.
 
-## Recommended stack
+When the rules are published, I will recheck eligibility, existing-project requirements,
+submission limits, categories, repository visibility, required materials, available model
+access, and the video limit before making the final choice.
 
-Keep FastAPI/Pydantic for the edge node and build the console with Vite, React, and
-TypeScript. Use Matterbridge/matter.js only for the virtual RVC fixture and PlatformIO or
-Arduino for the ESP32. An agent orchestration framework would add more surface than value
-for the first demo; the important boundary is model proposal → deterministic validation →
-owner confirmation → policy gate.
+## What the Threshold Node demo needs to show
 
-## Honest current state
+1. A phone walk produces a constrained housefile proposal using GPT-5.6 structured output.
+2. The owner reviews and confirms the proposal before it becomes policy.
+3. A simulated physical agent receives a scoped view and is denied access to a no-go zone.
+4. The Jetson-connected I/O rig shows the decision, records a receipt, and responds to the
+   prototype stop control.
 
-Codex is being used to build and review the project. GPT-5.6 is not yet wired into the
-runtime. Do not describe model integration, robot relay, persistent audit, or hardware
-latency as complete until the code and demo evidence exist.
+The memorable object should be the physical threshold: the model may propose, but it
+cannot bypass deterministic validation, owner confirmation, or the permission gate.
 
-Real-room footage is encouraged for impact, provided it passes
-`REAL-FOOTAGE-CHECKLIST.md` and every visible data surface remains synthetic.
+## Implementation
+
+The edge node uses FastAPI and Pydantic. The planned owner console uses Vite, React, and
+TypeScript. The hardware path uses an ESP32 bridge with Arduino or PlatformIO. A virtual
+Matter RVC is optional; the simulated agent and real I/O rig are enough for the primary
+demo.
+
+## Where Threshold Node stands
+
+The scoped-view core, owner/per-grant API boundaries, grant issue and revocation, RFC3339
+window/expiry enforcement, local JSONL decision ledger, and three-step synthetic mock
+agent run today. The mock proves a scoped read, an allowed policy decision that is not
+relayed because no adapter exists, and a no-go denial. It does not move hardware.
+
+The GPT-5.6 capture flow, persistent grant store, live owner console, real robot adapters,
+hardware bridge, and complete submission demo still need to be built and tested. The
+repository should only claim a capability after its code and demo evidence exist.
+
+Real-room footage can make the video stronger, but it must pass
+`REAL-FOOTAGE-CHECKLIST.md`, and every visible housefile, actor, receipt, and terminal value
+must remain synthetic.

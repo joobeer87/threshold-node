@@ -53,6 +53,16 @@ def test_real_world_video_file_fails(tmp_path: Path):
     assert report["findings"][0]["rule"] == "forbidden_path"
 
 
+def test_runtime_jsonl_ledger_fails_public_scan(tmp_path: Path):
+    (tmp_path / "ledger.jsonl").write_text(
+        '{"type":"READ","detail":"private runtime event"}\n',
+        encoding="utf-8",
+    )
+    result, report = run_scan(tmp_path)
+    assert result.returncode == 1
+    assert report["findings"][0]["rule"] == "forbidden_path"
+
+
 def test_ignored_raw_media_workspace_is_not_a_public_candidate(tmp_path: Path):
     raw = tmp_path / "media" / "raw"
     raw.mkdir(parents=True)

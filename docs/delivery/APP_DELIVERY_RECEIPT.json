@@ -1,36 +1,43 @@
 {
   "schema_version": "1.0",
-  "task": "public_repo_aurora_media_preparation",
-  "authority": "L2_local_only",
-  "delivery_gate": "warn",
+  "task": "waves_1_2_grants_ledger_mock_agent",
+  "authority": "L2_local_plus_user_authorized_branch_push_and_draft_pr",
+  "delivery_gate": "pass_local_scoped_wave",
   "impacted_features": [
-    "THS-F004",
-    "THS-F009",
-    "THS-F010"
+    "THS-F002",
+    "THS-F003",
+    "THS-F005",
+    "THS-F011",
+    "THS-F012"
   ],
   "proof": {
-    "automated_tests": "pass_31",
+    "automated_tests": "pass_109",
     "compile_check": "pass",
-    "public_tree_scan": "pass_0_findings_65_candidate_files",
-    "external_secret_scan": "pass_0_blockers_0_warnings_65_scanned_files",
-    "hosted_ci": "pending_first_push"
+    "loopback_mock_proof": "pass_scoped_200_allowed_unrelayed_503_no_go_403",
+    "public_tree_scan": "pass_0_findings_69_candidate_files",
+    "independent_secret_audit": "pass_0_history_patterns_0_forbidden_tracked_paths",
+    "hosted_ci": "pass_run_5_python_3_10_and_3_12_commit_3ae4894"
   },
   "docs_impact": "docs/delivery/DOCS_IMPACT_MATRIX.md",
   "feature_index": "docs/delivery/FEATURE_INDEX.md",
   "qa_matrix": "docs/delivery/QA_MATRIX.md",
   "human_leverage": {
     "status": "pass",
-    "summary": "One-command checks plus a reusable footage checklist reduce re-shoot, privacy-review, and publication burden."
+    "summary": "One command now proves scoped disclosure, an allowed but unrelayed request, and a no-go refusal without exposing raw payloads or credentials."
   },
   "blocked_claims": [
-    "GPT-5.6 runtime integration",
-    "robot command relay",
-    "persistent append-only ledger",
-    "measured stop latency",
+    "persistent grant metadata across restart",
+    "robot command relay or device motion",
+    "device-native adapter enforcement",
+    "tamper-evident ledger",
+    "GPT-5.6 capture integration",
+    "live owner console",
+    "hardware stop behavior or measured stop latency",
     "certified safety behavior",
-    "Build Week multiple-submission eligibility",
-    "GitHub publication without an operator approval reference and valid gh authentication"
+    "merge, deployment, or full submission readiness"
   ],
+  "hosted_mutation_scope": "user-authorized feature-branch push and draft pull request only",
   "secret_material_returned": false,
-  "hosted_or_provider_mutation": false
+  "hosted_or_provider_mutation": true,
+  "merge_or_deploy_performed": false
 }

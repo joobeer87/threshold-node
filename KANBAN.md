@@ -10,13 +10,13 @@ Day map: P0–P1→D1-2 · P2→D3-4 · P3→D4-6 · P4→D5+7 · P5→D6-8 · P
 | THS-0004 | P0 | core | Event bus | on/emit, handler crash isolation | src/threshold/core/events.py | 0002 | T1 | 30 | DONE | 75 | sync bus; async upgrade THS-0042 |
 | THS-0005 | P0 | core | Config loader | env + toml, LAN bind default | src/threshold/core/config.py | 0001 | T1 | 25 | DONE | 70 | minimal |
 | THS-0006 | P0 | repo | Public release hygiene | gitignore, synthetic fixtures, sanitized scanner, privacy docs | scripts/public_release_check.py | 0001 | T1 | 45 | DONE | 90 | local scan + tests |
-| THS-0010 | P1 | housefile | scoped_view pure function | SPEC-THS §3 rules 1–7 | src/threshold/housefile/scoped_view.py | 0002 | T1 | 45 | DONE | 90 | 8/8 tests pass |
+| THS-0010 | P1 | housefile | scoped_view pure function | SPEC-THS §3 rules 1–7 | src/threshold/housefile/scoped_view.py | 0002 | T1 | 45 | DONE | 90 | 9/9 tests pass |
 | THS-0011 | P1 | housefile | scoped_view unit tests | happy, no-go-always, safety invariant, inactive, undisclosed, ungrantable | tests/unit/test_scoped_view.py | 0010 | T1 | 45 | DONE | 90 | pytest green |
 | THS-0012 | P1 | housefile | JSON store + rev bump | load/save housefile, atomic write | src/threshold/housefile/store.py | 0002 | T1 | 30 | DONE | 75 | file-based; SQLite later |
-| THS-0013 | P1 | grants | Grant manager | issue/revoke/suspend_all, ungrantable no-go check | src/threshold/grants/manager.py | 0002 | T1 | 40 | DONE | 80 | covered in tests |
-| THS-0014 | P1 | api | FastAPI node v0 | /housefile /command /grants /ledger /health | src/threshold/api/server.py | 0010,0013 | T1 | 60 | WIP | 60 | skeleton written, needs auth+run |
-| THS-0015 | P1 | api | Owner + per-grant auth | separate bearer boundaries, loopback default, explicit LAN opt-in | src/threshold/api/server.py | 0014 | T1 | 45 | WIP | 75 | expiry/window enforcement pending |
-| THS-0016 | P1 | core | Ledger sink | append-only jsonl, subscribes all events | src/threshold/core/events.py | 0004 | T1 | 25 | TODO | 0 | |
+| THS-0013 | P1 | grants | Grant manager | issue/revoke/suspend_all, ungrantable no-go check | src/threshold/grants/manager.py | 0002 | T1 | 40 | DONE | 90 | lifecycle/time-decision tests |
+| THS-0014 | P1 | api | FastAPI node v0 | /housefile /command /grants /ledger /health | src/threshold/api/server.py | 0010,0013 | T1 | 60 | DONE | 90 | owner-auth issue/revoke + ASGI route tests |
+| THS-0015 | P1 | api | Owner + per-grant auth | separate bearer boundaries, loopback default, explicit LAN opt-in | src/threshold/api/server.py | 0014 | T1 | 45 | DONE | 90 | RFC3339 expiry + [start,end) windows enforced |
+| THS-0016 | P1 | core | Ledger sink | append-only JSONL, allowlisted fields, fsync-before-response, bounded owner reads | src/threshold/core/ledger.py | 0004 | T1 | 25 | DONE | 90 | durable local log; not tamper-evident |
 | THS-0020 | P2 | capture | Room-walk intake CLI | phone video/photos → frames → per-room batches | src/threshold/capture/vision_intake.py | 0012 | T1 | 90 | TODO | 0 | |
 | THS-0021 | P2 | capture | Vision → zones/inventory extraction | GPT-5.6 vision prompt → THS objects + flags, owner confirm step | src/threshold/capture/vision_intake.py | 0020 | T1 | 120 | TODO | 0 | human gate before write |
 | THS-0022 | P2 | capture | Boundary sketcher | rough rect boundaries from walk order; manual nudge UI later | src/threshold/capture/vision_intake.py | 0021 | T2 | 60 | TODO | 0 | |
@@ -25,7 +25,7 @@ Day map: P0–P1→D1-2 · P2→D3-4 · P3→D4-6 · P4→D5+7 · P5→D6-8 · P
 | THS-0032 | P3 | adapters | Virtual RVC demo rig | Matterbridge/matter.js virtual 1.4 RVC paired to HA | scripts/virtual_rvc.md | 0031 | T1 | 60 | TODO | 0 | $0 robot path |
 | THS-0033 | P3 | adapters | Automower Connect adapter | OAuth2, WS state, stay-out zone switches, ParkUntilFurtherNotice halt | src/threshold/adapters/automower.py | 0013 | T2 | 120 | TODO | 0 | rate limits! cache+WS |
 | THS-0034 | P3 | adapters | Valetudo MQTT adapter | segment-clean relay, halt | src/threshold/adapters/valetudo_mqtt.py | 0013 | T3 | 90 | TODO | 0 | |
-| THS-0035 | P3 | adapters | Mock agent client | pulls scoped file, attempts workshop, obeys | scripts/mock_robot.py | 0014 | T1 | 40 | WIP | 50 | script stub in repo |
+| THS-0035 | P3 | adapters | Mock agent client | scoped read → allowed/not-relayed → no-go denial | scripts/mock_robot.py | 0014,0015,0016 | T1 | 40 | DONE | 90 | sanitized JSONL proof + explicit exit codes |
 | THS-0040 | P4 | hardware | ESP32 firmware (bridge) | NC loop read, OLED, printer UART, serial JSON | firmware/bridge/bridge.ino | — | T1 | 90 | TODO | 0 | Arduino IDE |
 | THS-0041 | P4 | hardware | stop interlock driver + SIM mode | serial listener → suspend_all + halt_all; measure latency | src/threshold/hardware/estop.py | 0004,0013 | T1 | 60 | TODO | 0 | prototype, not safety-rated |
 | THS-0042 | P4 | hardware | display.py states | ARMED/READ/DENY/TRIPPED | src/threshold/hardware/display.py | 0040 | T2 | 45 | TODO | 0 | terminal fallback DONE-ish |

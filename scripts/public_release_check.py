@@ -40,6 +40,7 @@ FORBIDDEN_NAMES = {
 }
 FORBIDDEN_SUFFIXES = {
     ".heic",
+    ".jsonl",
     ".key",
     ".m4v",
     ".mov",

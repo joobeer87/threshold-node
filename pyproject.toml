@@ -10,9 +10,16 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 keywords = ["edge-ai", "robotics", "privacy", "home-automation"]
-dependencies = ["fastapi>=0.110", "uvicorn>=0.29", "pyserial>=3.5", "websockets>=12", "httpx>=0.27"]
+dependencies = [
+    "fastapi>=0.110,<1",
+    "pydantic>=2.9,<3",
+    "uvicorn>=0.29,<1",
+    "pyserial>=3.5,<4",
+    "websockets>=12,<17",
+    "httpx>=0.27,<1",
+]
 [project.optional-dependencies]
-dev = ["jsonschema>=4.10", "pytest>=8"]
+dev = ["jsonschema>=4.10,<5", "pytest>=8,<10"]
 
 [project.scripts]
 threshold-node = "threshold.__main__:main"
