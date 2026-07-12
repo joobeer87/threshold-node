@@ -16,7 +16,7 @@
     "loopback_mock_proof": "pass_scoped_200_allowed_unrelayed_503_no_go_403",
     "public_tree_scan": "pass_0_findings_69_candidate_files",
     "independent_secret_audit": "pass_0_history_patterns_0_forbidden_tracked_paths",
-    "hosted_ci": "pending_current_wave_checks"
+    "hosted_ci": "pass_run_5_python_3_10_and_3_12_commit_3ae4894"
   },
   "docs_impact": "docs/delivery/DOCS_IMPACT_MATRIX.md",
   "feature_index": "docs/delivery/FEATURE_INDEX.md",

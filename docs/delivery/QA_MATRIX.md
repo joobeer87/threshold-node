@@ -15,8 +15,8 @@
 | Automated suite | `make check`: 109 tests | Pass locally |
 | Loopback process proof | scoped `200` → allowed/unrelayed `503` → no-go `403` | Pass locally |
 | Public-tree scan | 69 candidate files, 0 findings | Pass locally |
-| Python 3.10 CI | `.github/workflows/ci.yml` | Pending current wave checks |
-| Python 3.12 CI | `.github/workflows/ci.yml` | Pending current wave checks |
+| Python 3.10 CI | GitHub Actions run 5 on implementation commit `3ae4894` | Pass |
+| Python 3.12 CI | GitHub Actions run 5 on implementation commit `3ae4894` | Pass |
 | Hardware | bench test with exact parts | Not run; do not claim |
 | GPT-5.6 integration | structured-output evals | Not implemented |
 
