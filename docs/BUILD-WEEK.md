@@ -51,10 +51,14 @@ demo.
 
 ## Where Threshold Node stands
 
-The scoped-view policy core and authenticated API boundary run today. The GPT-5.6 capture
-flow, persistent ledger, live owner console, hardware bridge, and complete demo sequence
-still need to be built and tested. The repository should only claim a capability after its
-code and demo evidence exist.
+The scoped-view core, owner/per-grant API boundaries, grant issue and revocation, RFC3339
+window/expiry enforcement, local JSONL decision ledger, and three-step synthetic mock
+agent run today. The mock proves a scoped read, an allowed policy decision that is not
+relayed because no adapter exists, and a no-go denial. It does not move hardware.
+
+The GPT-5.6 capture flow, persistent grant store, live owner console, real robot adapters,
+hardware bridge, and complete submission demo still need to be built and tested. The
+repository should only claim a capability after its code and demo evidence exist.
 
 Real-room footage can make the video stronger, but it must pass
 `REAL-FOOTAGE-CHECKLIST.md`, and every visible housefile, actor, receipt, and terminal value

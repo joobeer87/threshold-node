@@ -6,9 +6,10 @@ Threshold Node is a local-first permission appliance for domestic robots and age
 keeps a machine-readable *housefile* under the owner's control, returns only the zones and
 capabilities granted to a caller, refuses no-go actions, and records access decisions.
 
-> Pre-alpha scaffold: the scoped-view policy core and authenticated API boundary run;
-> robot adapters, persistent ledger, capture flow, owner console, and hardware interlock
-> are not implemented yet. This is not a life-safety system.
+> Pre-alpha scaffold: the scoped-view policy core, authenticated grant lifecycle API,
+> time-policy enforcement, durable local decision ledger, and synthetic mock-agent proof
+> run. Grant metadata still resets on restart; robot adapters, capture, owner console, and
+> hardware interlock are not implemented. This is not a life-safety system.
 
 ## Why this exists
 
@@ -16,7 +17,7 @@ Robots commonly build separate proprietary maps and permission models. Threshold
 that relationship: the home owns one local policy model, while each robot receives a
 scoped, revocable view. No-go boundaries transmit; their interiors do not.
 
-The checked-in house, grants, ledger entries, and UI reference are unmistakably synthetic.
+The checked-in house, seed grants, tests, and UI reference are unmistakably synthetic.
 Real dwelling exports, camera frames, device identifiers, credentials, and receipts must
 stay in ignored local storage.
 
@@ -24,11 +25,17 @@ stay in ignored local storage.
 
 - Pure `scoped_view` policy function with defense-in-depth around no-go zones.
 - Per-grant bearer authentication for robot reads and commands.
-- Separate owner authentication for the ledger/admin boundary.
+- Separate owner authentication for grant issue/revoke and ledger access.
+- Server-generated grant IDs, digest-only credential storage, revocation, RFC3339 expiry,
+  and start-inclusive/end-exclusive access windows.
+- Append-only local JSONL decision records with allowlisted fields, fsync-before-response,
+  and bounded owner reads. This is durability, not tamper evidence.
 - Loopback-only default; non-loopback binding requires an explicit opt-in.
-- Strict command schema that refuses unsupported verbs and never claims a stub adapter
-  relayed an action.
-- Simulator-first path, synthetic fixtures, and a sanitized public-release scanner.
+- Strict command schema that refuses unsupported verbs and non-empty parameters until
+  verb-specific schemas exist, and never claims a stub adapter relayed an action.
+- An exit-coded mock agent that proves scoped read → policy-allowed but not relayed →
+  no-go denial without printing the housefile or credentials.
+- Simulator-first fixtures and a sanitized public-release scanner.
 
 ## Framework
 
@@ -63,12 +70,49 @@ make run
 In another shell with the same demo grant token exported:
 
 ```bash
-python3 scripts/mock_robot.py --grant g-neo
+.venv/bin/python scripts/mock_robot.py --grant g-neo
 ```
 
-The node listens on `127.0.0.1:8471` by default. Do not expose it to a LAN or the internet
-until the threat model, persistent grant store, transport security, and hardware behavior
-have been reviewed.
+The script emits three bounded JSON Lines proof records. The middle request returns `503`
+because the policy gate allows it but no adapter exists; `relayed` remains `false`. The
+final workshop request returns `403`. No robot movement is performed or claimed.
+
+### Owner grant workflow
+
+For API-created grants, generate a third distinct local token and retain it as
+`THS_NEW_GRANT_TOKEN`; the server receives it only in a masked header, stores its digest,
+and never returns the credential. Issue a synthetic grant with:
+
+```bash
+curl --fail-with-body -X POST http://127.0.0.1:8471/grants \
+  -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
+  -H "X-Threshold-New-Grant-Token: ${THS_NEW_GRANT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{"name":"Synthetic Demo Agent","kind":"agent","scopes":["read:layout","command:navigate"],"zones":["kitchen"],"window":"standing","expires":"revocable"}'
+```
+
+Retain the returned grant ID as `RETURNED_GRANT_ID`. Revocation and bounded ledger
+inspection use owner auth:
+
+```bash
+curl --fail-with-body -X POST \
+  -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
+  "http://127.0.0.1:8471/grants/${RETURNED_GRANT_ID}/revoke"
+
+curl --fail-with-body \
+  -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
+  'http://127.0.0.1:8471/ledger?limit=20'
+```
+
+The node listens on `127.0.0.1:8471` by default and writes its local ledger under ignored
+`data/` storage unless `THS_LEDGER_PATH` is set. Issued grant metadata is currently
+in-memory and resets on restart. Do not expose the node to a LAN or the internet until the
+threat model, persistent grant store, transport security, and hardware behavior have been
+reviewed.
+
+Owner and demo grant tokens must be different, 32–512-character visible-ASCII values.
+All `*.jsonl` files are excluded from the public tree because a custom ledger path may
+still contain private activity data.
 
 ## Validation
 

@@ -20,6 +20,7 @@ real household. The public repository therefore ships only fictional data.
 - Raw, review, and exported real-room media files; publish the approved video externally.
 - Matter fabrics, Home Assistant tokens, device IDs, OAuth material, network captures,
   local paths, receipts, and ledger bodies.
+- Every `*.jsonl` runtime ledger, including one written outside the default `data/` path.
 
 ## Model boundary
 
@@ -30,9 +31,11 @@ model—decides disclosure and command authorization.
 
 ## Receipt boundary
 
-Receipts use an allowlist: event type, synthetic actor label, policy result, coarse zone
-label, timestamp, and a one-way content fingerprint. They do not print prompts, tokens,
-raw payloads, URLs, device identifiers, or private notes.
+The local decision ledger allowlists only `ts`, `type`, `agent`, `detail`, and optional
+`tier`; API code writes fixed detail strings rather than request parameters. Checked-in
+delivery receipts may contain counts, rule IDs, hashes, and pass/fail status. Neither form
+contains prompts, tokens, raw payloads, URLs, device identifiers, private notes, or raw
+ledger bodies.
 
 ## Pre-push gate
 

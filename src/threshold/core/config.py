@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from hmac import compare_digest
 
+from threshold.core.auth import is_valid_bearer_token
 from threshold.core.errors import ConfigError
 
 
@@ -13,9 +15,10 @@ def _is_true(value: str | None) -> bool:
 
 @dataclass(frozen=True)
 class Settings:
-    owner_token: str | None
-    demo_grant_token: str | None = None
+    owner_token: str | None = field(repr=False)
+    demo_grant_token: str | None = field(default=None, repr=False)
     bind: str = "127.0.0.1:8471"
+    ledger_path: str = "data/ledger.jsonl"
     esp32_serial: str = "SIMULATED"
     demo_mode: bool = False
     allow_network_bind: bool = False
@@ -29,6 +32,10 @@ class Settings:
             owner_token=token,
             demo_grant_token=grant_token,
             bind=values.get("THS_BIND", "127.0.0.1:8471").strip(),
+            ledger_path=(
+                values.get("THS_LEDGER_PATH", "data/ledger.jsonl").strip()
+                or "data/ledger.jsonl"
+            ),
             esp32_serial=values.get("ESP32_SERIAL", "SIMULATED").strip(),
             demo_mode=_is_true(values.get("THS_DEMO_MODE")),
             allow_network_bind=_is_true(values.get("THS_ALLOW_NETWORK_BIND")),
@@ -45,15 +52,22 @@ class Settings:
 
     def validate_runtime(self) -> None:
         host, _ = self.bind_address()
-        if self.owner_token is None or len(self.owner_token) < 32:
-            raise ConfigError("THS_OWNER_TOKEN must be a random value of at least 32 characters")
+        if not is_valid_bearer_token(self.owner_token):
+            raise ConfigError(
+                "THS_OWNER_TOKEN must be 32–512 visible ASCII characters"
+            )
         if host not in {"127.0.0.1", "localhost", "::1"} and not self.allow_network_bind:
             raise ConfigError("non-loopback THS_BIND requires THS_ALLOW_NETWORK_BIND=true")
-        if self.demo_mode and (
-            self.demo_grant_token is None or len(self.demo_grant_token) < 32
-        ):
+        if self.demo_mode and not is_valid_bearer_token(self.demo_grant_token):
             raise ConfigError(
-                "THS_DEMO_GRANT_TOKEN must be at least 32 characters in demo mode"
+                "THS_DEMO_GRANT_TOKEN must be 32–512 visible ASCII characters in demo mode"
             )
+        if (
+            self.demo_mode
+            and self.owner_token is not None
+            and self.demo_grant_token is not None
+            and compare_digest(self.owner_token, self.demo_grant_token)
+        ):
+            raise ConfigError("owner and demo grant tokens must be different")
 
 SETTINGS = Settings.from_env()

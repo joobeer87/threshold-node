@@ -43,13 +43,13 @@ SEED_FILE = Housefile(
 SEED_GRANTS = [
     Grant("g-neo", "NEO Unit 04", "humanoid",
           (Scope.READ_LAYOUT, Scope.READ_INVENTORY, Scope.CMD_NAVIGATE, Scope.CMD_MANIPULATE),
-          ("kitchen", "living", "office", "utility"), issued="2026-07-13 09:12",
+          ("kitchen", "living", "office", "utility"), issued="2026-07-13T09:12:00Z",
           credential_digest=_DEMO_GRANT_DIGEST),
     Grant("g-mower", "Automower 430X", "agent",
           (Scope.READ_LAYOUT, Scope.CMD_NAVIGATE), ("backlawn",),
-          window="dawn window", issued="2026-07-10 06:00"),
+          window="standing", issued="2026-07-10T06:00:00Z"),
     Grant("g-clean", "Sparkle Cleaning Co.", "human",
           (Scope.READ_LAYOUT, Scope.READ_SYSTEMS),
           ("kitchen", "living", "studio", "office", "utility"),
-          window="demo window", issued="2026-07-13 09:30"),
+          window="standing", issued="2026-07-13T09:30:00Z"),
 ]

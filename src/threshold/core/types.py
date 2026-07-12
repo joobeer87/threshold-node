@@ -67,4 +67,4 @@ class Grant:
     scopes: tuple[Scope, ...]; zones: tuple[str, ...]
     window: str = "standing"; expires: str = "revocable"
     status: GrantStatus = GrantStatus.ACTIVE; issued: str = ""
-    credential_digest: str = ""
+    credential_digest: str = field(default="", repr=False)

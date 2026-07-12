@@ -1,8 +1,9 @@
 # ARCHITECTURE
 
-This is the target architecture. Today only the policy core, in-memory grants, authenticated
-API boundary, and synthetic seed are runnable; adapters, durable ledger, console, capture,
-and hardware modules are incomplete.
+This diagram includes both runnable and target surfaces. Today the policy core, in-memory
+grant lifecycle, authenticated API, local append-only JSONL ledger, synthetic seed, and
+mock-agent client are runnable. Adapters, console, capture, and hardware modules remain
+incomplete.
 
 ```
                    owner console (blueprint UI, P5: MVP.jsx → live API)
@@ -11,10 +12,15 @@ and hardware modules are incomplete.
                                       │          ▲            │
                                       │    grants/manager ◄───┤ command gate
  ESP32 (USB) ◄─ hardware/{estop,display,receipt}              ▼
-     E-stop trip → EVENT:ESTOP → adapters.halt_all()   core/events (bus)
+     E-stop trip → EVENT:ESTOP → adapters.halt_all()   core/events (best-effort bus)
                                       └──► adapters/{matter_rvc, home_assistant,
-                                            valetudo_mqtt, automower, mock_agent}
-                     ledger (append-only) subscribes to EVERYTHING
+                                            valetudo_mqtt, automower}
+
+ API policy boundary ── append + fsync ──► local JSONL ledger
+ synthetic mock agent ── HTTP loopback ──► scoped read / command gate
 ```
-Import DAG: core ← housefile ← grants ← adapters ← api. Sideways talk = event bus only.
-Handlers never crash the bus. Ledger is the last subscriber to detach, first to attach.
+
+Import DAG: core ← housefile ← grants ← adapters ← api. Event-bus handlers are isolated,
+but the bus is not the durability boundary: required API receipts use a synchronous ledger
+append first, then notify in-process observers. The ledger contains only allowlisted event
+fields in ignored local storage; it does not persist grant metadata and is not tamper-proof.

@@ -10,7 +10,7 @@ Status: DRAFT-A (frozen for build week) · Owner: The Architect.
 - **SystemItem** `{id, name, zone, tag: water|power|hvac|net, detail}`
 - **InventoryItem** `{id, name, zone, flags[], note?}` — reserved flags: `fragile`, `do-not-touch`, `high-value`.
 - **Quirk** `{id, zone, text}` — tribal knowledge, transmitted with layout scope.
-- **Policies** `{quietHours{start,end}, teleop:"per-session"|"never", residency:"local-first", safetyMeta:"always"}`
+- **Policies** `{quietHours{start,end}, teleop:"per-session"|"never", residency:"local-first"}`
 
 ## 2. Grants
 `Grant {id, name, kind: humanoid|agent|human, scopes[], zones[], window, expires, status: active|revoked|expired|suspended, issued}`
@@ -18,8 +18,22 @@ Status: DRAFT-A (frozen for build week) · Owner: The Architect.
 Scopes: `read:layout` · `read:systems` · `read:inventory` · `command:navigate` · `command:manipulate`.
 No-go zones are **ungrantable** — issue-time validation error, visible to the owner, never a silent strip.
 
+`window` is either `standing` or `<RFC3339 start>/<RFC3339 end>`. Timestamps must include
+a timezone offset. A one-time window is start-inclusive and end-exclusive: `start <= now <
+end`; reaching its end marks the grant expired. `expires` is either `revocable` or one
+timezone-aware RFC3339 timestamp, and `now >= expires` marks the grant expired. Issue-time
+validation rejects already-ended policies and policies with no usable intersection.
+
+The local API generates `id` and `issued`. A new credential arrives separately from the
+JSON grant body, is hashed immediately, and is never part of the public Grant projection.
+Issued grant metadata is process-local in v0.1 and resets when the node restarts.
+Owner and per-grant credentials are distinct bounded visible-ASCII values suitable for
+masked HTTP header fields.
+
 ## 3. Scoped read — normative semantics (housefile/scoped_view.py)
-1. `status != active` → `{error:"grant_inactive"}` and a DENY ledger entry. Nothing else transmits.
+1. Pure `scoped_view()` returns `{error:"grant_inactive"}` with no resource fields when
+   `status != active`. The API normally intercepts that state first, durably appends DENY,
+   and returns HTTP `403`; the pure function itself performs no I/O.
 2. **No-go zones ALWAYS transmit** as `{id, access:"no-go", boundary}` — a robot must know
    where not to go; it never learns what's inside. Boundary yes, interior no.
 3. Zones outside the grant → `{id, disclosed:false}`. Existence acknowledged; geometry withheld.
@@ -39,4 +53,8 @@ Adapters compute tier from capabilities; asserting it by hand fails audit test T
 An ADVISORY zone presented as ENFORCED is a spec violation.
 
 ## 5. Ledger
-Append-only `{ts, type: GRANT|READ|DENY|REVOKE|ESTOP|PROVISION, agent, detail, tier?}`. ESTOP entries are never pruned.
+Append-only JSON Lines `{ts, type: GRANT|READ|DENY|REVOKE|ESTOP|PROVISION, agent, detail,
+tier?}` in ignored local storage. API-boundary events append and fsync before a successful
+payload or state-change response. Reads are bounded and tolerate corrupt lines. The ledger
+rejects malformed historical entries rather than inventing missing fields. The ledger is
+durable but is not hash-chained or tamper-evident. ESTOP entries are never pruned.
