@@ -17,8 +17,8 @@
 | Loopback process proof | scoped `200` → allowed/unrelayed `503` → no-go `403` | Pass locally |
 | Public-tree scan | 71 candidate files, 0 findings | Pass locally |
 | Capture force-track guard | scanner rejects files under `data/capture/` without reflecting paths or contents | Pass locally |
-| Python 3.10 CI | GitHub Actions run 5 on implementation commit `3ae4894` | Pass |
-| Python 3.12 CI | GitHub Actions run 5 on implementation commit `3ae4894` | Pass |
+| Python 3.10 CI | GitHub Actions push + PR checks for draft PR #2 | Pass |
+| Python 3.12 CI | GitHub Actions push + PR checks for draft PR #2 | Pass |
 | Hardware | bench test with exact parts | Not run; do not claim |
 | GPT-5.6 integration | structured-output evals | Not implemented |
 

@@ -19,5 +19,5 @@
 | PUBLICATION-CHECKLIST | repeatable branch-push review with transport-neutral auth wording | Updated |
 | Delivery records | Wave 3 feature, QA, docs-impact, and scoped delivery receipt | Updated for Wave 3 |
 
-Wave 3 changes and local validation are complete on a feature branch. Push, pull request,
-merge, deployment, and submission remain separate delivery states.
+Wave 3 changes are pushed to `agent/ths-0020-capture-intake`; draft PR #2 and its Python
+3.10/3.12 checks pass. Merge, deployment, and submission remain separate delivery states.
