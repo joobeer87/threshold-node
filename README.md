@@ -9,9 +9,11 @@ capabilities granted to a caller, refuses no-go actions, and records access deci
 > Pre-alpha scaffold: the scoped-view policy core, authenticated grant lifecycle API,
 > crash-recoverable private grant state, timezone-aware command policy, durable local
 > decision ledger, synthetic mock-agent proof run, privacy-first local capture intake, and
-> a guarded GPT-5.6 observation-proposal adapter. Live model quality has not been evaluated,
-> and boundaries, canonical proposal materialization, robot adapters, owner console, and
-> hardware interlock are not implemented.
+> a guarded GPT-5.6 observation-proposal adapter. A simulated, process-local stop-interlock,
+> deterministic terminal states, and a synthetic PNG receipt fallback are implemented with
+> software-path tests. Live model quality has not been evaluated, and boundaries, canonical
+> proposal materialization, robot adapters, owner console, ESP32/NC-loop input, OLED/printer
+> output, and physical stopping are not implemented.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -44,6 +46,17 @@ stay in ignored local storage.
 - Command-only quiet-hours gating in an explicit IANA timezone. Active quiet hours produce
   a durable denial and `403`; an invalid timezone or policy produces no relay and `503`.
   Scoped reads are unaffected.
+- Owner-authenticated simulated trip and re-arm routes enabled only when demo mode is on
+  and `ESP32_SERIAL` is exactly `SIMULATED`. Trip latches first, commits grant suspension
+  plus an ESTOP receipt even with zero active grants, then attempts every injected adapter
+  independently. Repeated trip calls while latched do not repeat those effects.
+- Fail-closed simulated latch handling: if durable suspension fails, that server process
+  remains TRIPPED, denies grant use and issue, and refuses re-arm. After a successful trip,
+  re-arm clears only the process-local latch and never restores suspended grants.
+- Deterministic terminal frames for `ARMED`, two-second `READ`, four-second `DENY`, and
+  latched `TRIPPED`, plus allowlisted GRANT/DENY/ESTOP text and fixed-bitmap PNG generation.
+  The optional PNG sink is private and write-once; the API's ESTOP fallback is generated in
+  memory and discarded.
 - Loopback-only default; non-loopback binding requires an explicit opt-in.
 - Strict command schema that refuses unsupported verbs and non-empty parameters until
   verb-specific schemas exist, and never claims a stub adapter relayed an action.
@@ -54,8 +67,8 @@ stay in ignored local storage.
 - An explicit-consent OpenAI Responses API adapter that sends only verified normalized
   frames, requires strict structured output, revalidates it locally, and records a
   digest-bound owner decision without creating policy or writing the housefile.
-- Simulator-first fixtures and a sanitized public-release scanner that rejects capture
-  artifacts even if they are force-added to Git.
+- Simulator-first fixtures and a sanitized public-release scanner that rejects tracked
+  runtime data, including capture and receipt artifacts, even if force-added to Git.
 
 ## Framework
 
@@ -70,8 +83,10 @@ is:
 - OpenAI Responses API with GPT-5.6 structured outputs for vision-to-housefile proposals,
   always behind deterministic validation and explicit owner confirmation.
 
-The adapter and provider-free contract tests are implemented. A live synthetic GPT-5.6
-quality/cost evaluation is still required before calling the extraction flow demo-proven.
+The model adapter and provider-free contract tests are implemented. A live synthetic
+GPT-5.6 quality/cost evaluation is still required before calling the extraction flow
+demo-proven. The current simulated appliance proof does not change that warning or prove
+any physical hardware behavior.
 See [`docs/BUILD-WEEK.md`](docs/BUILD-WEEK.md).
 
 ## Quickstart (synthetic demo only)
@@ -131,6 +146,27 @@ curl --fail-with-body \
   -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
   'http://127.0.0.1:8471/ledger?limit=20'
 ```
+
+With demo mode enabled and `ESP32_SERIAL=SIMULATED`, the owner can exercise the bounded
+software-only latch:
+
+```bash
+curl --fail-with-body -X POST \
+  -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
+  http://127.0.0.1:8471/sim/interlock/trip
+
+curl --fail-with-body -X POST \
+  -H "X-Threshold-Owner-Token: ${THS_OWNER_TOKEN}" \
+  http://127.0.0.1:8471/sim/interlock/rearm
+```
+
+The trip response labels its elapsed value `simulated_software_path_only` and always says
+`physical_stop_verified:false`. A successful first trip durably suspends active grants and
+records one ESTOP event; the duplicate call is idempotent. Re-arm restores no grant. If the
+durable transition fails, the process keeps denying while TRIPPED and the server refuses
+re-arm. The latch itself is in memory and is not coordinated across workers or processes;
+the persisted suspended grant state is the only restart proof. Run this pre-alpha API with
+one worker.
 
 The node listens on `127.0.0.1:8471` by default. It writes its private ledger and grant
 envelope under ignored `data/` storage unless `THS_LEDGER_PATH` and
@@ -235,8 +271,10 @@ scanner reports only file, line, and rule identifiers; it never echoes matching 
 | Existing home robots | Home Assistant or Valetudo MQTT | Gated by Threshold |
 | Future agents/humanoids | THS-0.1 scoped-read API | Gated + auditable |
 
-These adapters are stubs today; the API reports them as unavailable rather than upgrading
-their enforcement tier.
+These adapters are stubs today; the command API reports them as unavailable rather than
+upgrading their enforcement tier. The simulated trip coordinator can isolate injected
+`halt_all()` failures, but no configured adapter or physical device stop is currently
+proved.
 
 ## Repository map
 
@@ -251,10 +289,12 @@ reference/     non-runnable JSX visual reference for the future console
 
 ## Safety and disclosure
 
-The physical stop loop described in [`HARDWARE.md`](HARDWARE.md) is a prototype interlock,
-not a certified emergency-stop. Keep manufacturer controls and a physical power-isolation
-path. For vulnerability handling and public-demo rules, see [`SECURITY.md`](SECURITY.md)
-and [`docs/PRIVACY.md`](docs/PRIVACY.md). Real-room video follows the separate
+The current stop path is a process-local simulation, not evidence for the physical loop
+described in [`HARDWARE.md`](HARDWARE.md), and neither is a certified emergency-stop. It
+does not prove an NC loop, ESP32, OLED, printer, adapter, device stop, or physical timing.
+Keep manufacturer controls and a physical power-isolation path. For vulnerability handling
+and public-demo rules, see [`SECURITY.md`](SECURITY.md) and
+[`docs/PRIVACY.md`](docs/PRIVACY.md). Real-room video follows the separate
 [`footage checklist`](docs/REAL-FOOTAGE-CHECKLIST.md) and stays out of Git.
 
 Contributions follow [`CONTRIBUTING.md`](CONTRIBUTING.md). The first-publish metadata and

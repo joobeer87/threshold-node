@@ -6,8 +6,10 @@ explicit first-boot synthetic seed, IANA quiet-hours command gate, mock-agent cl
 local capture normalization are implemented. The capture wave's local unit, privacy,
 scanner, and synthetic FFmpeg proofs pass. The GPT-5.6 proposal adapter, strict validator,
 and local owner-decision record are implemented with provider-free tests; live model
-evaluation, geometry, canonical materialization, adapters, console, and hardware remain
-incomplete.
+evaluation, geometry, canonical materialization, adapters, console, and physical hardware
+remain incomplete. The simulated appliance adds a process-local latched stop coordinator,
+deterministic terminal frames, and a synthetic PNG receipt fallback; it proves only the
+software path.
 
 ```
                    owner console (blueprint UI, P5: MVP.jsx → live API)
@@ -31,10 +33,14 @@ incomplete.
                                                                      └── prepared/committed
                                                                          JSONL ledger receipt
 
- ESP32 (USB) ◄─ future hardware/{estop,display,receipt}
-     E-stop trip → durable authority.suspend_all() → adapters.halt_all()
-                                      └──► adapters/{matter_rvc, home_assistant,
-                                            valetudo_mqtt, automower}
+ owner-auth /sim/interlock/trip ── explicit demo + exact SIMULATED gate
+                  │
+                  ├─ latch process TRIPPED first
+                  ├─ durable authority.suspend_all() + ESTOP (including zero active)
+                  ├─ independent adapters[].halt_all() attempts (none configured)
+                  └─ terminal TRIPPED + deterministic in-memory ESTOP PNG
+
+ future NC loop/ESP32/OLED/printer ── not connected or verified
 
  durable append ──► core/events observers (best effort only)
 ```
@@ -55,8 +61,11 @@ line as the commit point, then replaces the pending envelope with a clean target
 and minimal ledger witness. On restart—or on the next request after an I/O failure—the
 authority reloads the envelope before serving any grant. It aborts an uncommitted issue,
 rolls a missing restrictive receipt forward while the restrictive target remains effective,
-or finalizes a receipt already proven at the expected offset. A mismatch or ambiguous pair
-fails closed with `503`; it never silently installs the synthetic seed over existing state.
+or finalizes a receipt already proven at the expected offset. Before doing so, it
+reconstructs the base snapshot, compares it with the prior clean target hash, and verifies
+the prior revision's exact ledger receipt. A mismatch, unrelated inserted grant, missing
+prior receipt, or ambiguous pair fails closed with `503`; it never silently installs the
+synthetic seed over existing state.
 
 This recovery protocol protects against interrupted local writes, not malicious control of
 both files. The store is not a database, the witness is not a hash chain, and neither file
@@ -68,6 +77,28 @@ decisions, converts it with `zoneinfo.ZoneInfo`, and evaluates quiet hours befor
 An active interval produces a durable DENY and `403`; an invalid IANA timezone or malformed
 policy produces a durable DENY and `503`. Scoped reads remain available outside this
 command-only gate and include the timezone in their policy projection.
+
+The simulated appliance surface is owner-authenticated and exists only when demo mode is
+enabled and `ESP32_SERIAL` equals `SIMULATED` exactly. The interlock latches its current
+process before calling display, persistence, adapters, or receipt code. Persistence uses
+the same authority transaction as other restrictive grant transitions and records ESTOP
+even when zero active grants exist. Adapter calls are isolated so one failure does not skip
+later attempts. Duplicate trip requests reuse the first report without repeating effects.
+
+The serving process denies grant use and issue whenever its latch is TRIPPED. A failed
+durable transition therefore remains locally restrictive and makes the server re-arm route
+return unavailable. A successful re-arm clears only that local latch; suspended grants
+remain suspended across restart. The latch is not in the shared store, is not coordinated
+between workers, and resets on process restart. Run the simulated appliance with one
+worker. All reported elapsed values are explicitly `simulated_software_path_only`, never a
+physical response-time or safety target.
+
+The immutable display state renders control-safe `ARMED`, two-second `READ`, four-second
+`DENY`, and latched `TRIPPED` terminal frames with a simulation banner. Receipt generation
+accepts only allowlisted GRANT/DENY/ESTOP fields and produces deterministic 384×256
+grayscale PNG bytes. The API generates its ESTOP fallback in memory and discards it; the
+separate optional sink is private, single-link, and write-once. There is no ESP32, NC-loop,
+OLED, printer, configured adapter, device actuation, or certified-safety evidence.
 
 The file lock coordinates local processes only when they share the same private paths and
 POSIX filesystem semantics; non-POSIX hosts fail closed. It is not a distributed lock and

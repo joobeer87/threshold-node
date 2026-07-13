@@ -26,6 +26,9 @@ EXCLUDED_DIRS = {
 }
 PRIVATE_PATH_RULES = {
     ("data", "capture"): "tracked_private_capture",
+    ("data", "receipts"): "tracked_private_receipt",
+    ("data",): "tracked_private_runtime_data",
+    ("receipts",): "tracked_private_receipt",
     ("media", "exports"): "tracked_private_media",
     ("media", "raw"): "tracked_private_media",
     ("media", "review"): "tracked_private_media",
@@ -142,10 +145,10 @@ def _tracked_paths(root: Path) -> set[str] | None:
         return None
 
 
-def _private_path_rule(parts: tuple[str, ...]) -> str | None:
+def _private_path_rule(parts: tuple[str, ...]) -> tuple[str, int] | None:
     for prefix, rule in PRIVATE_PATH_RULES.items():
         if parts[: len(prefix)] == prefix:
-            return rule
+            return rule, len(prefix)
     return None
 
 
@@ -162,9 +165,12 @@ def scan(root: Path) -> dict[str, object]:
     else:
         for relative in sorted(tracked_paths):
             parts = Path(relative).parts
-            private_path_rule = _private_path_rule(parts)
-            if private_path_rule is not None:
-                redacted_path = "/".join((*parts[:2], "<private>"))
+            private_path_match = _private_path_rule(parts)
+            if private_path_match is not None:
+                private_path_rule, prefix_length = private_path_match
+                redacted_path = "/".join(
+                    (*parts[:prefix_length], "<private>")
+                )
                 findings.append(
                     {"path": redacted_path, "line": None, "rule": private_path_rule}
                 )

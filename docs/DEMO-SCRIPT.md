@@ -36,6 +36,36 @@ durably denied with `403`, `policy_decision:denied`, `relayed:false`, and
 checks. The focused API tests, rather than a wall-clock-dependent mock run, are the
 deterministic evidence for this branch.
 
+## Runnable now — synthetic simulated appliance, no hardware
+
+The focused integration proof runs the complete THS-0051 sequence against temporary,
+unmistakably synthetic trust state:
+
+```bash
+.venv/bin/python -m pytest -q tests/integration/test_simulated_appliance.py
+```
+
+It issues a grant, returns a scoped read, durably denies a no-go command, invokes the
+owner-authenticated simulated trip route, and then denies the suspended grant. The trip
+route is available only with explicit demo mode and `ESP32_SERIAL=SIMULATED`. It latches
+the process before callbacks, persists one ESTOP event even when zero grants are active,
+and attempts each injected adapter independently. Repeated trip calls while latched are
+idempotent. The server currently configures zero adapters.
+
+Re-arm clears the local latch only after its durable transition succeeded and never
+restores a grant; the integration proof verifies that suspension survives re-arm and
+authority restart. If persistence fails, the process stays TRIPPED, denies grant use and
+issue, and refuses server re-arm. The latch itself is memory-only and single-worker; it
+resets on process restart and is not coordinated across processes.
+
+The terminal fallback has `READ <agent>` for two seconds, `DENY <agent>` for four seconds,
+and latched `TRIPPED`. The synthetic receipt primitive deterministically renders allowlisted
+GRANT/DENY/ESTOP text and PNG bytes; the API's ESTOP PNG is generated in memory and
+discarded. Any elapsed field is labeled `simulated_software_path_only`, and
+`physical_stop_verified` remains false. This proof contains no NC loop, ESP32, serial
+bridge, OLED, printer, configured robot adapter, device movement/stop, or certified-safety
+evidence.
+
 ## Target submission sequence — 75 seconds
 
 Target script only. Do not record or submit this sequence until each shown behavior has an
@@ -45,13 +75,17 @@ recorded sanitized quality, latency, token-use, and cost evidence.
 
 0–8s   Phone walks the hallway, frames stream into a terminal. VO: "Every robot maps your home for itself. This one maps it for you."
 8–20s  Housefile plots on the blueprint console — title block, zones, shutoffs, flags.
-20–35s Grant issued to the robot (real Matter 1.4 RVC, virtual RVC, or Automower). Printer: GRANT receipt.
-35–48s Robot cleans the granted room; console shows READ. Show `ENFORCED` only if a real
-device-native area control has been proven. Workshop stays hatched — boundary only.
-48–58s Command aimed at the Workshop → 403, DENY flashes on the OLED, printer: DENY receipt.
-58–68s Operator presses the prototype interlock. Show the simulated agent halt only after its
-isolated halt path is proven; label all timing as simulated software-path evidence. Display:
-TRIPPED. Printer: STOP. Two seconds of silence.
+20–35s Grant issued to the synthetic agent. Show a separately generated synthetic GRANT
+receipt fallback; do not imply that the API printed it or operated a device.
+35–48s Synthetic agent reads the granted room; the terminal shows READ. Show cleaning or
+`ENFORCED` only if a real device-native area control has been separately proved. Workshop
+stays hatched — boundary only.
+48–58s Command aimed at the Workshop → 403; the simulated terminal shows DENY for four
+seconds. A deterministic synthetic DENY PNG may be shown from a private temporary sink.
+This must not be described as OLED or printer evidence.
+58–68s Owner invokes the simulated trip route. Show TRIPPED and the grant becoming suspended;
+label all timing `simulated_software_path_only` and show `physical_stop_verified:false`.
+Do not imply a button press, adapter delivery, physical halt, OLED, or printed output.
 68–75s Ledger scrolls. End card: "Your home's data belongs to the home. THRESHOLD."
 
 Optional post-credit: reveal the public-safe Aurora signature from

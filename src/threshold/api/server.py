@@ -33,17 +33,31 @@ from threshold.grants.authority import (
 )
 from threshold.grants.manager import normalize_time
 from threshold.grants.store import GrantMetadataStore
+from threshold.hardware.display import DisplayState
+from threshold.hardware.estop import (
+    SIMULATED_TIMING_SCOPE,
+    InterlockState,
+    SimulatedLatchedInterlock,
+    TripNotice,
+    TripReport,
+)
+from threshold.hardware.receipt import build_receipt, render_receipt_png
 from threshold.housefile.scoped_view import scoped_view
 
 
 app = FastAPI(
     title="Threshold Node",
     version="0.1.0",
-    description="Pre-alpha local permission node; adapters and safety hardware are not implemented.",
+    description=(
+        "Pre-alpha local permission node with simulated software-path interlocks; "
+        "physical safety hardware is not implemented or verified."
+    ),
 )
 FILE: Housefile = SEED_FILE
 GRANT_LOCK = RLock()
 LEDGER = JsonlLedger(SETTINGS.ledger_path)
+ADAPTERS: tuple[object, ...] = ()
+DISPLAY_STATE = DisplayState()
 
 
 def _demo_seeds(settings: Settings) -> tuple[Grant, ...]:
@@ -119,6 +133,29 @@ class GrantIssueResponse(BaseModel):
 class GrantRevokeResponse(BaseModel):
     grant: PublicGrant
     changed: bool
+
+
+class SimulatedTripResponse(BaseModel):
+    state: Literal["TRIPPED"]
+    newly_tripped: bool
+    persistence_succeeded: bool
+    suspended_grants: int
+    adapter_call_attempts: int
+    adapter_call_completions: int
+    adapter_call_failures: int
+    simulated_display_updated: bool
+    synthetic_receipt_rendered: bool
+    simulated_elapsed_ms: float | None
+    timing_scope: Literal["simulated_software_path_only"]
+    physical_stop_verified: Literal[False]
+
+
+class SimulatedRearmResponse(BaseModel):
+    state: Literal["ARMED"]
+    changed: bool
+    grants_restored: Literal[False]
+    timing_scope: Literal["simulated_software_path_only"]
+    physical_stop_verified: Literal[False]
 
 
 @app.exception_handler(RequestValidationError)
@@ -233,6 +270,108 @@ def _log(
     return persisted
 
 
+def _simulated_appliance_enabled() -> bool:
+    """Limit the control surface to the explicit synthetic demo appliance."""
+
+    return SETTINGS.demo_mode and SETTINGS.esp32_serial == "SIMULATED"
+
+
+def _display_read(agent: str, *, now: datetime) -> None:
+    """Publish a best-effort transient only after the READ receipt is durable."""
+
+    global DISPLAY_STATE
+    try:
+        DISPLAY_STATE = DISPLAY_STATE.on_read(agent, now=now)
+    except Exception:
+        return
+
+
+def _display_deny(agent: str, *, now: datetime) -> None:
+    """Publish a best-effort transient only after a restrictive decision."""
+
+    global DISPLAY_STATE
+    try:
+        DISPLAY_STATE = DISPLAY_STATE.on_deny(agent, now=now)
+    except Exception:
+        return
+
+
+def _interlock_display(state: InterlockState) -> None:
+    """Latch the simulated terminal display before slower trip work begins."""
+
+    global DISPLAY_STATE
+    if state != InterlockState.TRIPPED:
+        raise ValueError("simulated interlock display state is invalid")
+    DISPLAY_STATE = DISPLAY_STATE.trip()
+
+
+def _interlock_receipt(notice: TripNotice) -> None:
+    """Exercise the deterministic in-memory ESTOP PNG fallback.
+
+    Runtime persistence remains the JSONL ESTOP receipt owned by
+    :class:`GrantAuthority`.  The bitmap is generated and discarded: no public
+    artifact, household data, or credential material is written.
+    """
+
+    if not notice.persistence_succeeded or notice.tripped_at is None:
+        raise ValueError("simulated receipt unavailable")
+    receipt = build_receipt(
+        EventType.ESTOP,
+        occurred_at=notice.tripped_at,
+        sequence=AUTHORITY.revision,
+        actor="SYSTEM",
+    )
+    render_receipt_png(receipt)
+
+
+def _build_simulated_interlock() -> SimulatedLatchedInterlock:
+    """Build an injected, side-effect-bounded appliance coordinator."""
+
+    return SimulatedLatchedInterlock(
+        lambda *, now: AUTHORITY.suspend_all(now=now),
+        ADAPTERS,
+        utc_clock=_request_utc,
+        display=_interlock_display,
+        receipt=_interlock_receipt,
+    )
+
+
+def _trip_response(report: TripReport) -> SimulatedTripResponse:
+    """Project only bounded counters and explicit simulation nonclaims."""
+
+    if not report.persistence_succeeded or report.suspended_grants is None:
+        raise HTTPException(
+            503,
+            detail={
+                "state": InterlockState.TRIPPED.value,
+                "reason": "durable grant suspension unavailable",
+                "timing_scope": SIMULATED_TIMING_SCOPE,
+                "physical_stop_verified": False,
+            },
+        )
+    return SimulatedTripResponse(
+        state="TRIPPED",
+        newly_tripped=report.newly_tripped,
+        persistence_succeeded=True,
+        suspended_grants=report.suspended_grants,
+        adapter_call_attempts=report.adapter_attempts,
+        adapter_call_completions=report.adapter_completions,
+        adapter_call_failures=report.adapter_failures,
+        simulated_display_updated=(
+            report.display_attempts == 1 and report.display_failures == 0
+        ),
+        synthetic_receipt_rendered=(
+            report.receipt_attempts == 1 and report.receipt_failures == 0
+        ),
+        simulated_elapsed_ms=report.simulated_elapsed_ms,
+        timing_scope="simulated_software_path_only",
+        physical_stop_verified=False,
+    )
+
+
+INTERLOCK = _build_simulated_interlock()
+
+
 @contextmanager
 def _usable_grant(
     grant_id: str,
@@ -259,9 +398,25 @@ def _usable_grant(
                         f"{action} refused: {decision.reason}",
                         now=now,
                     )
+                _display_deny(grant.id, now=now)
                 raise HTTPException(
                     403,
                     detail={"policy_decision": "denied", "reason": decision.reason},
+                )
+            if INTERLOCK.state == InterlockState.TRIPPED:
+                _log(
+                    EventType.DENY,
+                    grant.id,
+                    f"{action} refused: simulated interlock tripped",
+                    now=now,
+                )
+                _display_deny(grant.id, now=now)
+                raise HTTPException(
+                    403,
+                    detail={
+                        "policy_decision": "denied",
+                        "reason": "interlock_tripped",
+                    },
                 )
             yield grant
     except GrantAuthenticationFailed as exc:
@@ -272,18 +427,80 @@ def _usable_grant(
 
 @app.get("/health")
 async def health() -> dict[str, object]:
-    return {
-        "service": "up",
-        "release_stage": "pre-alpha",
-        "armed": False,
-        "interlock": "not_implemented",
-        "ledger": "persistent_jsonl_configured",
-        "ledger_availability": "not_probed",
-        "grant_store": "authoritative_digest_only_configured",
-        "grant_store_availability": "not_probed",
-        "adapters": [],
-        "demo_mode": SETTINGS.demo_mode,
-    }
+    with GRANT_LOCK:
+        interlock_state = INTERLOCK.state.value
+        return {
+            "service": "up",
+            "release_stage": "pre-alpha",
+            "armed": False,
+            "interlock": (
+                "simulated_latched"
+                if _simulated_appliance_enabled()
+                else "simulated_disabled"
+            ),
+            "interlock_state": interlock_state,
+            "physical_stop_verified": False,
+            "timing_scope": SIMULATED_TIMING_SCOPE,
+            "ledger": "persistent_jsonl_configured",
+            "ledger_availability": "not_probed",
+            "grant_store": "authoritative_digest_only_configured",
+            "grant_store_availability": "not_probed",
+            "adapters": [],
+            "demo_mode": SETTINGS.demo_mode,
+        }
+
+
+@app.post(
+    "/sim/interlock/trip",
+    response_model=SimulatedTripResponse,
+    dependencies=[Depends(require_owner)],
+)
+async def trip_simulated_interlock() -> SimulatedTripResponse:
+    """Run the synthetic software path without claiming physical actuation."""
+
+    with GRANT_LOCK:
+        if not _simulated_appliance_enabled():
+            raise HTTPException(503, "simulated appliance is not enabled")
+        return _trip_response(INTERLOCK.trip())
+
+
+@app.post(
+    "/sim/interlock/rearm",
+    response_model=SimulatedRearmResponse,
+    dependencies=[Depends(require_owner)],
+)
+async def rearm_simulated_interlock() -> SimulatedRearmResponse:
+    """Clear only a successfully persisted local latch; never restore grants."""
+
+    global DISPLAY_STATE
+    with GRANT_LOCK:
+        if not _simulated_appliance_enabled():
+            raise HTTPException(503, "simulated appliance is not enabled")
+        previous = INTERLOCK.last_report
+        if (
+            INTERLOCK.state == InterlockState.TRIPPED
+            and (previous is None or not previous.persistence_succeeded)
+        ):
+            raise HTTPException(
+                503,
+                detail={
+                    "state": InterlockState.TRIPPED.value,
+                    "reason": "durable grant suspension unavailable",
+                    "grants_restored": False,
+                },
+            )
+        changed = INTERLOCK.rearm()
+        try:
+            DISPLAY_STATE = DISPLAY_STATE.rearm()
+        except Exception:
+            pass
+        return SimulatedRearmResponse(
+            state="ARMED",
+            changed=changed,
+            grants_restored=False,
+            timing_scope="simulated_software_path_only",
+            physical_stop_verified=False,
+        )
 
 
 @app.get("/.well-known/aurora", include_in_schema=False)
@@ -328,6 +545,10 @@ async def housefile(
             payload = scoped_view(FILE, active_grant)
             event_type = EventType.DENY if "error" in payload else EventType.READ
             _log(event_type, active_grant.id, "scoped read", now=request_now)
+            if event_type == EventType.READ:
+                _display_read(active_grant.id, now=request_now)
+            else:
+                _display_deny(active_grant.id, now=request_now)
             return payload
 
 
@@ -347,6 +568,7 @@ def _evaluate_command(
             "command refused: quiet_hours_timezone_invalid",
             now=now,
         )
+        _display_deny(active_grant.id, now=now)
         raise HTTPException(
             503,
             detail={
@@ -367,6 +589,7 @@ def _evaluate_command(
             f"command refused: {quiet_hours.reason}",
             now=now,
         )
+        _display_deny(active_grant.id, now=now)
         raise HTTPException(
             403 if quiet_hours.reason == "quiet_hours_active" else 503,
             detail={
@@ -387,6 +610,7 @@ def _evaluate_command(
             "command refused: parameters unsupported",
             now=now,
         )
+        _display_deny(active_grant.id, now=now)
         raise HTTPException(
             403,
             detail={
@@ -407,6 +631,7 @@ def _evaluate_command(
             "command refused: policy boundary",
             now=now,
         )
+        _display_deny(active_grant.id, now=now)
         raise HTTPException(
             403,
             detail={
@@ -422,6 +647,7 @@ def _evaluate_command(
         now=now,
         tier="UNAVAILABLE",
     )
+    _display_deny(active_grant.id, now=now)
     raise HTTPException(
         503,
         detail={
@@ -493,6 +719,15 @@ async def issue_grant(
 
     with GRANT_LOCK:
         request_now = _request_utc()
+        if INTERLOCK.state == InterlockState.TRIPPED:
+            _display_deny("system", now=request_now)
+            raise HTTPException(
+                423,
+                detail={
+                    "policy_decision": "denied",
+                    "reason": "interlock_tripped",
+                },
+            )
         _ensure_authority(request_now)
         try:
             issued = _rfc3339(request_now)

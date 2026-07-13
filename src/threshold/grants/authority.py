@@ -184,7 +184,7 @@ class GrantAuthority:
             )
 
     def suspend_all(self, *, now: datetime) -> int:
-        """Persist all active grants as suspended with one ESTOP commit."""
+        """Persist one ESTOP receipt and suspend every currently active grant."""
 
         with self._exclusive(now=now):
             affected = {
@@ -192,8 +192,6 @@ class GrantAuthority:
                 for grant_id, grant in self.grants.items()
                 if grant.status == GrantStatus.ACTIVE
             }
-            if not affected:
-                return 0
             target = self._copy_grants(self.grants)
             for grant_id in affected:
                 target[grant_id].status = GrantStatus.SUSPENDED
@@ -203,7 +201,7 @@ class GrantAuthority:
                 previous_statuses=affected,
                 event_type=EventType.ESTOP,
                 agent="system",
-                detail="interlock tripped; active grants suspended",
+                detail="simulated interlock tripped; active grants suspended",
                 now=now,
             )
             return len(affected)
@@ -246,6 +244,7 @@ class GrantAuthority:
             return
 
         if state.pending is not None:
+            self._verify_pending_base_receipt(state)
             state = self._recover(state)
         else:
             self._verify_clean_state(state)
@@ -422,6 +421,29 @@ class GrantAuthority:
                 )
             )
         self._validate_housefile_bindings(state.grants)
+
+    def _verify_pending_base_receipt(self, state: GrantStoreState) -> None:
+        """Verify the prior clean ledger revision before rolling forward."""
+
+        pending = state.pending
+        if pending is None or pending.base_revision != state.revision:
+            raise GrantAuthorityUnavailable("grant authority unavailable")
+        self._validate_housefile_bindings(pending.target_grants)
+        if state.revision == 0:
+            if state.ledger_witness is not None:
+                raise GrantAuthorityUnavailable("grant authority unavailable")
+            return
+        witness = state.ledger_witness
+        if witness is None:
+            raise GrantAuthorityUnavailable("grant authority unavailable")
+        self.ledger.verify_witness(
+            LedgerWitness(
+                transaction=witness.transaction,
+                grant_revision=witness.revision,
+                ledger_offset=witness.ledger_offset,
+                receipt_sha256=witness.receipt_sha256,
+            )
+        )
 
     def _install_state(self, state: GrantStoreState) -> None:
         self._verify_clean_state(state)

@@ -40,13 +40,17 @@ not part of the effective grant set before its ledger receipt. Pending revoke, e
 suspend transitions expose their restrictive target state, so recovery cannot temporarily
 reactivate a grant. Recovery aborts an uncommitted issue, rolls an uncommitted restrictive
 transition forward, or finalizes a transition whose exact ledger receipt is already
-present. Corrupt, ambiguous, or witness-mismatched authority state makes grant operations
-unavailable with HTTP `503`; it never falls back to seeds. First-boot synthetic seeding is
-allowed only in explicit demo mode. This is crash-consistency evidence, not tamper evidence.
+present. Pending recovery first reconstructs the base snapshot, compares it with the prior
+clean target hash, and verifies that prior revision's ledger receipt. Corrupt, ambiguous,
+or witness-mismatched authority state makes grant operations unavailable with HTTP `503`;
+it never falls back to seeds. First-boot synthetic seeding is allowed only in explicit demo
+mode. This is crash-consistency evidence, not tamper evidence.
 
-Revoke, observed expiry, and future E-stop suspension therefore survive restart. Expiry is
-persisted when a request first observes the exact expiry/window-end boundary; the pure
-manager computes the transition but does not mutate state before the authority commits it.
+Revoke, observed expiry, and simulated-interlock suspension therefore survive restart.
+Every new simulated trip commits an ESTOP transition even when no active grant needs a
+status change. Expiry is persisted when a request first observes the exact
+expiry/window-end boundary; the pure manager computes the transition but does not mutate
+state before the authority commits it.
 
 ## 3. Scoped read — normative semantics (housefile/scoped_view.py)
 1. Pure `scoped_view()` returns `{error:"grant_inactive"}` with no resource fields when
@@ -95,6 +99,14 @@ Bounded owner reads tolerate corrupt unrelated lines and reject malformed fields
 than inventing data. Grant recovery is stricter: the current authority revision must verify
 its exact witnessed ledger line. The ledger is durable but is not hash-chained or
 tamper-evident. ESTOP entries are never pruned.
+
+The current ESTOP producer is an owner-authenticated simulated route gated by explicit demo
+mode and exact `ESP32_SERIAL=SIMULATED`. It latches the serving process before persistence;
+successful persistence suspends active grants, while failure leaves the process denying use
+and refusing re-arm. Duplicate trips in one latch cycle do not append duplicate ESTOP
+events. Re-arm never restores grants. The latch and elapsed measurement are process-local
+`simulated_software_path_only` evidence, not proof of physical input, adapter delivery, or
+device stop.
 
 ## 7. Vision proposal boundary
 

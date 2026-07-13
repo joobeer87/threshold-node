@@ -27,6 +27,8 @@ real household. The public repository therefore ships only fictional data.
 - Raw, review, and exported real-room media files; publish the approved video externally.
 - Matter fabrics, Home Assistant tokens, device IDs, OAuth material, network captures,
   local paths, receipts, and ledger bodies.
+- Every runtime synthetic receipt PNG, including output from the optional private write-once
+  sink. An allowlisted template does not make a local activity artifact publication-safe.
 - Every real-capture runtime receipt, including its batch ID and manifest hash; omission of
   paths and room labels does not make a real-household receipt publication-safe.
 - Every `*.jsonl` runtime ledger, including one written outside the default `data/` path.
@@ -99,12 +101,30 @@ status. Real capture and proposal receipts stay local even though their output s
 sanitized. Neither checked-in form contains prompts, tokens, raw payloads, URLs, device
 identifiers, private notes, or raw ledger bodies.
 
+The simulated-appliance receipt primitive is narrower still: only GRANT, DENY, and ESTOP
+templates are accepted through its factory, and its function signature has no credential,
+digest, arbitrary detail, or raw-payload field. Direct construction is rejected, and the
+renderer rechecks the factory-created receipt's integrity before emitting bytes. Exact
+validated inputs produce deterministic 384×256 grayscale PNG bytes. The API renders the
+ESTOP fallback in memory and discards it. An
+explicit optional sink creates only a private `0700` directory and new, single-link `0600`
+write-once PNG; existing files, symlinks, hardlinks, and non-private directories fail
+closed. Those controls reduce accidental disclosure but do not make a runtime PNG suitable
+for Git.
+
+Simulated trip responses expose only bounded outcome counters and explicit nonclaims. They
+do not return adapter exceptions, ledger bodies, grant metadata, credentials, or receipt
+bytes. The process-local latch denies use after a persistence failure without reflecting
+the private error. `simulated_software_path_only` latency is not household, device, or
+physical-safety evidence.
+
 ## Pre-push gate
 
 Run `make check`, inspect `git ls-files`, and review the staged diff. The scanner output is
 sanitized by design and must report zero findings before publication. It treats
-`data/capture/` as private even when a file there was force-added, so capture artifacts
-cannot become acceptable merely by bypassing `.gitignore`.
+all tracked runtime paths under `data/`, including capture and receipt artifacts, and the
+legacy root `receipts/` path as private even when a file there was force-added. Such
+artifacts cannot become acceptable merely by bypassing `.gitignore`.
 
 Real-room video is allowed for the submission, but it does not make real dwelling data an
 acceptable code fixture. Follow `docs/REAL-FOOTAGE-CHECKLIST.md` and keep the repo's visible

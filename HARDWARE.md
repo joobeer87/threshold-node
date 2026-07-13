@@ -4,6 +4,26 @@ Links are **search-stable** (product listings churn; these queries don't). Pick 
 top-rated hit. Prices in CAD, July 2026 ballpark. Everything has a software fallback —
 a late package can delay a feature, never the build.
 
+## Implemented fallback: simulated software path only
+
+The current build does not read this BOM or operate hardware. In explicit demo mode with
+`ESP32_SERIAL=SIMULATED`, an owner-authenticated API route exercises a process-local
+latched state machine. It sets TRIPPED before callbacks, durably suspends grants and records
+ESTOP even when zero grants are active, attempts injected adapters independently, and makes
+duplicate trip requests idempotent. No adapter is configured by the server.
+
+The terminal fallback renders `ARMED`, two-second `READ`, four-second `DENY`, and latched
+`TRIPPED` states. The receipt fallback produces deterministic, allowlisted GRANT/DENY/ESTOP
+text and 384×256 grayscale PNG bytes. The API renders its ESTOP PNG in memory and discards
+it; an explicit optional sink is private (`0700` directory, new `0600` single-link file)
+and write-once. It does not drive an OLED or printer.
+
+If durable suspension fails, that server process stays TRIPPED, denies grant use and issue,
+and refuses re-arm. A successful re-arm clears only the local latch and never restores
+suspended grants. The latch is memory-only, resets on process restart, and is not shared
+across workers; use a single worker for this simulation. Its elapsed field is always labeled
+`simulated_software_path_only` and is not a physical stop-time measurement.
+
 ## Prototype BOM (prices checked July 2026)
 | # | Part | ~CAD | Link | Fallback if late |
 |---|---|---|---|---|
@@ -24,7 +44,7 @@ or another Python-capable edge computer. A webcam or phone is required for captu
   with Service Area is implemented there) or a Valetudo/HA demo instance. The judges see
   a real protocol exchange either way. Buying a robot is OPTIONAL.
 
-## Wiring (ESP32 bridge path — recommended)
+## Target wiring (ESP32 bridge path — not yet implemented or bench-proven)
 ```
 STOP LOOP (NC)   ── GPIO27 ── external pull-up to 3V3 ── loop to GND
                     trip condition: GPIO reads HIGH (loop OPEN)
@@ -45,8 +65,13 @@ logic levels, printer baud, and printer peak current against the exact parts bef
 > Prototype warning: this is a demo interlock, not a certified emergency-stop or
 > life-safety circuit. Keep manufacturer controls and a physical power-isolation path.
 
-## Bench test order (30 min, day parts arrive)
+## Future bench test order (not yet executed)
 1. ESP32 blink → serial echo
 2. Button loop reads: closed=LOW, open=HIGH, unplugged lead=HIGH (trip ✓)
 3. OLED "THRESHOLD / ARMED"
 4. Printer self-test page (hold feed on power-up), then serial "RECEIPT 000 TEST"
+
+Passing the software simulation does not prove the NC loop, wire-break behavior, ESP32
+firmware, serial transport, GPIO, OLED, printer, adapter delivery, physical device stop, or
+any certified-safety property. Keep manufacturer controls and an independent physical
+power-isolation path throughout future bench work.
