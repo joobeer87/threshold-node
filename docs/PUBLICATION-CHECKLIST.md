@@ -27,8 +27,10 @@ branch and draft pull request before merge. Repeat the safety checks below for e
 - Wiki: disabled
 - Private vulnerability reporting: enabled
 
-Do not add a GPT-5.6 topic or runtime claim until that integration is implemented and
-tested.
+The GPT-5.6 request adapter and provider-free contract tests may be described precisely.
+Do not claim live model quality, cost, or end-to-end extraction evidence until a reviewed
+synthetic provider run exists. Never publish a real capture request, response, proposal,
+decision, batch/proposal digest, or runtime receipt.
 
 ## After a public push
 

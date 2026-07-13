@@ -8,8 +8,9 @@ capabilities granted to a caller, refuses no-go actions, and records access deci
 
 > Pre-alpha scaffold: the scoped-view policy core, authenticated grant lifecycle API,
 > time-policy enforcement, durable local decision ledger, synthetic mock-agent proof run,
-> and privacy-first local capture intake. Grant metadata still resets on restart; vision
-> extraction, robot adapters, owner console, and hardware interlock are not implemented.
+> privacy-first local capture intake, and a guarded GPT-5.6 observation-proposal adapter.
+> Grant metadata still resets on restart; live model quality has not been evaluated, and
+> boundaries, robot adapters, owner console, and hardware interlock are not implemented.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -38,6 +39,9 @@ stay in ignored local storage.
   no-go denial without printing the housefile or credentials.
 - A bounded, local-only intake that normalizes one room's JPEG/PNG photos or MOV/MP4/M4V
   video into private JPEG frames without calling a model or changing the housefile.
+- An explicit-consent OpenAI Responses API adapter that sends only verified normalized
+  frames, requires strict structured output, revalidates it locally, and records a
+  digest-bound owner decision without creating policy or writing the housefile.
 - Simulator-first fixtures and a sanitized public-release scanner that rejects capture
   artifacts even if they are force-added to Git.
 
@@ -54,8 +58,9 @@ is:
 - OpenAI Responses API with GPT-5.6 structured outputs for vision-to-housefile proposals,
   always behind deterministic validation and explicit owner confirmation.
 
-The OpenAI runtime integration is planned, not yet implemented. See
-[`docs/BUILD-WEEK.md`](docs/BUILD-WEEK.md).
+The adapter and provider-free contract tests are implemented. A live synthetic GPT-5.6
+quality/cost evaluation is still required before calling the extraction flow demo-proven.
+See [`docs/BUILD-WEEK.md`](docs/BUILD-WEEK.md).
 
 ## Quickstart (synthetic demo only)
 
@@ -143,8 +148,43 @@ Capture batches and their runtime receipts can still describe or fingerprint a r
 keep both local and never force-add them to Git.
 
 This command performs intake only. It makes no network or model call and cannot write the
-canonical housefile. Vision extraction and owner confirmation remain separate planned
-work.
+canonical housefile.
+
+### Private vision proposal
+
+The next command is a separate privacy boundary: selected normalized frames leave the
+device for OpenAI processing. Review the batch first, set `OPENAI_API_KEY` only in the local
+process environment, and pass the explicit consent flag with the batch ID and manifest
+digest from the intake receipt:
+
+```bash
+.venv/bin/python -m threshold.capture.openai_vision propose "${BATCH_ID}" \
+  --manifest-sha256 "${MANIFEST_SHA256}" \
+  --allow-external-processing
+```
+
+The Responses API request uses GPT-5.6, Base64 image inputs, `detail: high`, `store: false`,
+no tools, and strict JSON Schema output. Threshold then performs a second deterministic
+validation pass and saves a private proposal under a write-once filename beside the batch.
+The proposal is digest-bound and revalidated before an owner decision; it is not described
+as immutable or tamper-evident. Image text and QR codes are treated as observations, never
+instructions. Provider errors and refusals are reduced to fixed receipts that do not
+reflect response bodies, paths, prompts, or keys.
+
+Inspect the private proposal locally. To record an owner decision, use the proposal ID and
+digest from the receipt; the command prompts securely for `THS_OWNER_TOKEN`:
+
+```bash
+.venv/bin/python -m threshold.capture.openai_vision confirm \
+  "${BATCH_ID}" "${PROPOSAL_ID}" \
+  --proposal-sha256 "${PROPOSAL_SHA256}"
+```
+
+Use `reject` instead of `confirm` to reject it. Either action writes only a terminal private
+decision artifact. Confirmation means “owner-approved proposal,” not “policy applied”: it
+does not produce boundaries, assign access, or write the canonical housefile. Proposal,
+decision, and runtime receipt files remain private even when their output shape is
+sanitized.
 
 ## Validation
 
@@ -171,7 +211,7 @@ their enforcement tier.
 
 ```text
 docs/          architecture, specs, privacy, demo, and Build Week plan
-schema/        THS-0.1 JSON Schema and a synthetic fixture
+schema/        canonical THS-0.1 and private vision-proposal JSON Schemas
 src/threshold/ policy core, grants, API, adapters, hardware, and capture modules
 tests/         unit/API/security tests
 scripts/       mock robot and public-release scan

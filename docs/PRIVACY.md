@@ -20,6 +20,8 @@ real household. The public repository therefore ships only fictional data.
 - Raw camera/audio frames and model prompts containing household context.
 - Normalized frame batches and capture manifests under `data/capture/`; derived media is
   still household data.
+- Vision proposals, owner decisions, model response identifiers, batch/proposal hashes,
+  and every real-run provider receipt stored beside a private capture batch.
 - Raw, review, and exported real-room media files; publish the approved video externally.
 - Matter fabrics, Home Assistant tokens, device IDs, OAuth material, network captures,
   local paths, receipts, and ledger bodies.
@@ -36,19 +38,35 @@ tool output. It makes no model call and cannot change the canonical housefile.
 Input must stay outside the repository checkout or under ignored `media/raw/`; the CLI
 refuses other in-repository sources before invoking a media tool.
 
-A later model flow may send only the narrowest room batch needed for a structured
-proposal. Model output remains untrusted: validate it against THS-0.1, show an
-owner-visible diff, and require confirmation before changing the canonical housefile.
-Deterministic policy—not a model—decides disclosure and command authorization.
+The GPT-5.6 proposal command is a separate external-processing boundary. It is disabled
+without `--allow-external-processing`, reads `OPENAI_API_KEY` only from the process
+environment, and sends at most eight verified normalized frames using Base64 data URLs.
+The fixed Responses API request uses `store:false`, no tools, no user URL, and no room
+label, path, manifest, credential, or source filename. Pixels, visible text, and QR codes
+are untrusted data and never instructions.
+
+Strict structured output is necessary but not sufficient. Threshold parses a bounded
+response, handles refusals and incomplete responses, rejects duplicate keys and unknown
+fields, then applies deterministic count, string, flag, evidence-reference, and uniqueness
+checks. The result is an incomplete private observation proposal—not THS-0.1 policy. It
+cannot assign access, boundaries, policies, grants, commands, or enforcement.
+
+Owner confirmation is a second invocation that prompts for the configured owner token and
+requires the exact proposal digest. It rechecks the proposal, manifest, and frame hashes,
+then writes one confirm/reject artifact under a write-once filename. It does not call a
+provider or the housefile store. Hash binding detects changes but is not tamper evidence
+against an attacker who controls the local filesystem. Deterministic policy—not a
+model—decides disclosure and command authorization.
 
 ## Receipt boundary
 
 The local decision ledger allowlists only `ts`, `type`, `agent`, `detail`, and optional
 `tier`; API code writes fixed detail strings rather than request parameters. Checked-in
 delivery receipts must be derived only from synthetic fixtures and may contain bounded
-counts, rule IDs, hashes, and pass/fail status. Real capture receipts stay local even though
-their output shape is sanitized. Neither checked-in form contains prompts, tokens, raw
-payloads, URLs, device identifiers, private notes, or raw ledger bodies.
+counts, rule IDs, hashes, and pass/fail status. Real capture and proposal receipts stay
+local even though their output shape is sanitized. Neither checked-in form contains
+prompts, tokens, raw payloads, URLs, device identifiers, private notes, or raw ledger
+bodies.
 
 ## Pre-push gate
 
