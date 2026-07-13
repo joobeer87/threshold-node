@@ -19,8 +19,20 @@ No version is security-supported yet. The `0.1.x` line is a Build Week prototype
 
 - Use only `schema/examples/synthetic-demo-house.json` and the in-code synthetic seed.
 - Generate owner and grant tokens locally; never commit or print them.
+- Raw grant credentials must remain memory-only. The private store retains only credential
+  digests, which are still sensitive and must never be published.
 - Keep the default loopback bind. A network bind is an explicit, reviewed opt-in.
-- Treat receipts, ledgers, camera frames, and device integrations as sensitive local data.
+- Treat receipts, the ledger and grant-store pair, camera frames, and device integrations as
+  sensitive local data. Keep the trust-state directory private and back up or restore both
+  files together.
+- Synthetic grants may seed only on a genuinely empty first boot with explicit demo mode.
+  Missing, corrupt, mismatched, or ambiguous state after history exists returns unavailable;
+  never delete one file to force a seed fallback.
+- Quiet hours use the canonical policy's explicit IANA timezone and gate commands only.
+  An active window is durably denied; an invalid schedule or timezone returns unavailable
+  without relay. Reads do not bypass their existing grant/disclosure checks.
+- The GPT-5.6 adapter has provider-free contract evidence only. Do not claim live quality,
+  latency, token use, or cost until a reviewed synthetic provider evaluation exists.
 - Run `make check` against the exact staged tree before any push.
 - Do not use the prototype stop loop as an emergency-stop or life-safety system.
 - Keep raw or review real-room footage out of Git and complete the footage privacy checklist

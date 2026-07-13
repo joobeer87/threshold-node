@@ -20,7 +20,8 @@ def scoped_view(file: Housefile, grant: Grant) -> dict:
         "grant": {"id": grant.id, "agent": grant.name,
                   "scopes": [s.value for s in grant.scopes], "window": grant.window},
         "policies": {"quietHours": {"start": file.policies.quiet_start,      # rule 6
-                                    "end": file.policies.quiet_end},
+                                    "end": file.policies.quiet_end,
+                                    "timezone": file.policies.timezone},
                      "teleop": file.policies.teleop},
     }
 

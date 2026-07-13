@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -10,6 +11,7 @@ import stat
 import threading
 from collections import deque
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -29,13 +31,47 @@ DEFAULT_READ_LIMIT = 100
 MAX_READ_LIMIT = 1_000
 MAX_ENTRY_BYTES = 256 * 1024
 MAX_READ_BYTES = 4 * 1024 * 1024
+CHECKPOINT_TAIL_BYTES = 64 * 1024
 ALLOWED_EVENT_TYPES = frozenset(event_type.value for event_type in EventType)
 _MISSING = object()
+_TRANSACTION_ID = re.compile(r"tx-[0-9a-f]{32}\Z")
+_DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 _RFC3339_TIMESTAMP = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T"
     r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"
     r"(?:Z|[+-][0-9]{2}:[0-9]{2})\Z"
 )
+
+
+@dataclass(frozen=True)
+class LedgerCheckpoint:
+    """Exact append precondition captured before a grant transaction."""
+
+    offset: int
+    tail_sha256: str
+
+
+@dataclass(frozen=True)
+class PreparedLedgerEvent:
+    """Canonical event bytes bound to an exact ledger checkpoint."""
+
+    entry: dict[str, object]
+    encoded: bytes
+    checkpoint: LedgerCheckpoint
+
+    @property
+    def receipt_sha256(self) -> str:
+        return hashlib.sha256(self.encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class LedgerWitness:
+    """Minimum data needed to verify a committed grant revision."""
+
+    transaction: str
+    grant_revision: int
+    ledger_offset: int
+    receipt_sha256: str
 
 
 class JsonlLedger:
@@ -47,7 +83,7 @@ class JsonlLedger:
     """
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
-        self.path = Path(path)
+        self.path = Path(path).absolute()
         self._thread_lock = threading.RLock()
 
     def append(self, entry: Mapping[str, object]) -> dict[str, object]:
@@ -60,24 +96,11 @@ class JsonlLedger:
 
         event_type = entry.get("type")
         normalized = self._normalize(event_type, entry, strict=False)
-        encoded = (
-            json.dumps(
-                normalized,
-                allow_nan=False,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            ).encode("utf-8")
-            + b"\n"
-        )
-        if len(encoded) > MAX_ENTRY_BYTES:
-            raise ValueError("ledger entry exceeds the local size limit")
+        encoded = self._encode_entry(normalized)
 
         with self._thread_lock:
             parent = self.path.parent
-            parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            if parent.is_symlink():
-                raise OSError("ledger parent is not a direct directory")
+            self._verify_private_parent(create=True)
 
             descriptor = os.open(self.path, self._write_flags(), 0o600)
             original_size: int | None = None
@@ -98,6 +121,187 @@ class JsonlLedger:
                 self._file_unlock(descriptor)
                 os.close(descriptor)
         return normalized
+
+    def prepare_event(self, entry: Mapping[str, object]) -> PreparedLedgerEvent:
+        """Canonicalize one event and bind it to the current durable tail."""
+
+        normalized = self._normalize(entry.get("type"), entry, strict=False)
+        encoded = self._encode_entry(normalized)
+        checkpoint = self._checkpoint()
+        return PreparedLedgerEvent(normalized, encoded, checkpoint)
+
+    def rebuild_prepared_event(
+        self,
+        entry: Mapping[str, object],
+        *,
+        ledger_offset: int,
+        ledger_tail_sha256: str,
+        receipt_sha256: str,
+    ) -> PreparedLedgerEvent:
+        """Reconstruct and validate a pending event during restart recovery."""
+
+        normalized = self._normalize(entry.get("type"), entry, strict=True)
+        encoded = self._encode_entry(normalized)
+        if not (
+            isinstance(ledger_offset, int)
+            and not isinstance(ledger_offset, bool)
+            and ledger_offset >= 0
+            and isinstance(ledger_tail_sha256, str)
+            and _DIGEST.fullmatch(ledger_tail_sha256)
+            and isinstance(receipt_sha256, str)
+            and _DIGEST.fullmatch(receipt_sha256)
+            and hashlib.sha256(encoded).hexdigest() == receipt_sha256
+        ):
+            raise OSError("ledger transaction metadata is invalid")
+        return PreparedLedgerEvent(
+            normalized,
+            encoded,
+            LedgerCheckpoint(ledger_offset, ledger_tail_sha256),
+        )
+
+    def append_prepared(self, prepared: PreparedLedgerEvent) -> dict[str, object]:
+        """Append exact bytes only when the durable tail still matches."""
+
+        if not isinstance(prepared, PreparedLedgerEvent):
+            raise OSError("ledger transaction metadata is invalid")
+        normalized = self._normalize(
+            prepared.entry.get("type"), prepared.entry, strict=True
+        )
+        if self._encode_entry(normalized) != prepared.encoded:
+            raise OSError("ledger transaction metadata is invalid")
+
+        with self._thread_lock:
+            parent = self.path.parent
+            self._verify_private_parent(create=True)
+            descriptor = os.open(self.path, self._write_flags(), 0o600)
+            original_size: int | None = None
+            try:
+                self._verify_regular_private_file(descriptor)
+                os.fchmod(descriptor, 0o600)
+                self._file_lock(descriptor, exclusive=True)
+                self._repair_incomplete_tail(descriptor)
+                original_size = os.fstat(descriptor).st_size
+                if not self._checkpoint_matches(descriptor, prepared.checkpoint):
+                    raise OSError("ledger transaction precondition changed")
+                try:
+                    self._write_all(descriptor, prepared.encoded)
+                    os.fsync(descriptor)
+                    self._fsync_parent(parent)
+                except OSError:
+                    self._rollback(descriptor, original_size)
+                    raise
+            finally:
+                self._file_unlock(descriptor)
+                os.close(descriptor)
+        return normalized
+
+    def inspect_prepared(self, prepared: PreparedLedgerEvent) -> bool:
+        """Return exact-receipt presence; mismatches are ambiguous failures."""
+
+        with self._thread_lock:
+            descriptor: int | None = None
+            try:
+                self._verify_private_parent(create=False)
+                descriptor = os.open(self.path, self._read_flags())
+                self._verify_regular_private_file(descriptor)
+                self._file_lock(descriptor, exclusive=False)
+                size = os.fstat(descriptor).st_size
+                checkpoint = prepared.checkpoint
+                if size < checkpoint.offset:
+                    raise OSError("ledger transaction history is unavailable")
+                if self._checkpoint_digest(descriptor, checkpoint.offset) != (
+                    checkpoint.tail_sha256
+                ):
+                    raise OSError("ledger transaction history is ambiguous")
+                if size == checkpoint.offset:
+                    return False
+                observed = os.pread(
+                    descriptor,
+                    len(prepared.encoded),
+                    checkpoint.offset,
+                )
+                if observed != prepared.encoded:
+                    raise OSError("ledger transaction history is ambiguous")
+                return True
+            except FileNotFoundError:
+                empty_digest = self._empty_checkpoint_digest()
+                if (
+                    prepared.checkpoint.offset == 0
+                    and prepared.checkpoint.tail_sha256 == empty_digest
+                ):
+                    return False
+                raise OSError("ledger transaction history is unavailable") from None
+            finally:
+                if descriptor is not None:
+                    self._file_unlock(descriptor)
+                    os.close(descriptor)
+
+    def verify_witness(self, witness: LedgerWitness) -> None:
+        """Verify the exact ledger line that committed a clean store revision."""
+
+        if not (
+            isinstance(witness, LedgerWitness)
+            and _TRANSACTION_ID.fullmatch(witness.transaction)
+            and isinstance(witness.grant_revision, int)
+            and not isinstance(witness.grant_revision, bool)
+            and witness.grant_revision > 0
+            and isinstance(witness.ledger_offset, int)
+            and not isinstance(witness.ledger_offset, bool)
+            and witness.ledger_offset >= 0
+            and _DIGEST.fullmatch(witness.receipt_sha256)
+        ):
+            raise OSError("ledger witness is invalid")
+        with self._thread_lock:
+            self._verify_private_parent(create=False)
+            descriptor = os.open(self.path, self._read_flags())
+            try:
+                self._verify_regular_private_file(descriptor)
+                self._file_lock(descriptor, exclusive=False)
+                data = os.pread(
+                    descriptor,
+                    MAX_ENTRY_BYTES + 1,
+                    witness.ledger_offset,
+                )
+                newline = data.find(b"\n")
+                if newline < 0 or newline >= MAX_ENTRY_BYTES:
+                    raise OSError("ledger witness is unavailable")
+                encoded = data[: newline + 1]
+                if hashlib.sha256(encoded).hexdigest() != witness.receipt_sha256:
+                    raise OSError("ledger witness is invalid")
+                try:
+                    parsed = json.loads(encoded.decode("utf-8"))
+                    normalized = self._normalize(
+                        parsed.get("type") if isinstance(parsed, dict) else None,
+                        parsed,
+                        strict=True,
+                    )
+                except (AttributeError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+                    raise OSError("ledger witness is invalid") from None
+                if (
+                    normalized.get("transaction") != witness.transaction
+                    or normalized.get("grant_revision") != witness.grant_revision
+                    or self._encode_entry(normalized) != encoded
+                ):
+                    raise OSError("ledger witness is invalid")
+            finally:
+                self._file_unlock(descriptor)
+                os.close(descriptor)
+
+    def has_history(self) -> bool:
+        """Return whether any durable ledger bytes predate a missing grant store."""
+
+        with self._thread_lock:
+            descriptor: int | None = None
+            try:
+                self._verify_private_parent(create=False)
+                descriptor = os.open(self.path, self._read_flags())
+                self._verify_regular_private_file(descriptor)
+                return os.fstat(descriptor).st_size > 0
+            except FileNotFoundError:
+                return False
+            finally:
+                if descriptor is not None:
+                    os.close(descriptor)
 
     def record_event(
         self,
@@ -144,6 +348,7 @@ class JsonlLedger:
         with self._thread_lock:
             descriptor: int | None = None
             try:
+                self._verify_private_parent(create=False)
                 descriptor = os.open(self.path, self._read_flags())
                 self._verify_regular_private_file(descriptor)
                 self._file_lock(descriptor, exclusive=False)
@@ -175,6 +380,66 @@ class JsonlLedger:
                     os.close(descriptor)
 
         return list(reversed(entries))
+
+    @staticmethod
+    def _encode_entry(entry: Mapping[str, object]) -> bytes:
+        encoded = (
+            json.dumps(
+                entry,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+            + b"\n"
+        )
+        if len(encoded) > MAX_ENTRY_BYTES:
+            raise ValueError("ledger entry exceeds the local size limit")
+        return encoded
+
+    def _checkpoint(self) -> LedgerCheckpoint:
+        with self._thread_lock:
+            parent = self.path.parent
+            self._verify_private_parent(create=True)
+            descriptor = os.open(self.path, self._write_flags(), 0o600)
+            try:
+                self._verify_regular_private_file(descriptor)
+                os.fchmod(descriptor, 0o600)
+                self._file_lock(descriptor, exclusive=True)
+                self._repair_incomplete_tail(descriptor)
+                os.fsync(descriptor)
+                self._fsync_parent(parent)
+                offset = os.fstat(descriptor).st_size
+                return LedgerCheckpoint(
+                    offset=offset,
+                    tail_sha256=self._checkpoint_digest(descriptor, offset),
+                )
+            finally:
+                self._file_unlock(descriptor)
+                os.close(descriptor)
+
+    @staticmethod
+    def _empty_checkpoint_digest() -> str:
+        return hashlib.sha256((0).to_bytes(8, "big")).hexdigest()
+
+    @staticmethod
+    def _checkpoint_digest(descriptor: int, offset: int) -> str:
+        length = min(offset, CHECKPOINT_TAIL_BYTES)
+        start = offset - length
+        data = os.pread(descriptor, length, start) if length else b""
+        return hashlib.sha256(offset.to_bytes(8, "big") + data).hexdigest()
+
+    @classmethod
+    def _checkpoint_matches(
+        cls,
+        descriptor: int,
+        checkpoint: LedgerCheckpoint,
+    ) -> bool:
+        size = os.fstat(descriptor).st_size
+        return bool(
+            size == checkpoint.offset
+            and cls._checkpoint_digest(descriptor, size) == checkpoint.tail_sha256
+        )
 
     @staticmethod
     def _normalize(
@@ -223,6 +488,21 @@ class JsonlLedger:
             if not isinstance(tier, str) or not tier:
                 raise ValueError("ledger tier is invalid")
             normalized["tier"] = tier
+        transaction = payload.get("transaction", _MISSING)
+        grant_revision = payload.get("grant_revision", _MISSING)
+        if (transaction is _MISSING) != (grant_revision is _MISSING):
+            raise ValueError("ledger transaction metadata is incomplete")
+        if transaction is not _MISSING:
+            if not (
+                isinstance(transaction, str)
+                and _TRANSACTION_ID.fullmatch(transaction)
+                and isinstance(grant_revision, int)
+                and not isinstance(grant_revision, bool)
+                and 0 < grant_revision <= 2**63 - 1
+            ):
+                raise ValueError("ledger transaction metadata is invalid")
+            normalized["transaction"] = transaction
+            normalized["grant_revision"] = grant_revision
         return normalized
 
     @staticmethod
@@ -256,8 +536,59 @@ class JsonlLedger:
             raise OSError("ledger target is not a regular file")
         if metadata.st_nlink != 1:
             raise OSError("ledger target has unexpected links")
+        if stat.S_IMODE(metadata.st_mode) != 0o600:
+            raise OSError("ledger target permissions are not private")
         if hasattr(os, "geteuid") and metadata.st_uid != os.geteuid():
             raise OSError("ledger target has unexpected ownership")
+
+    def _verify_private_parent(self, *, create: bool) -> bool:
+        parent = self.path.parent
+        self._reject_symlink_components(parent)
+        try:
+            metadata = parent.lstat()
+        except FileNotFoundError:
+            if not create:
+                return False
+            try:
+                parent.mkdir(mode=0o700)
+                metadata = parent.lstat()
+            except (FileExistsError, FileNotFoundError, OSError):
+                raise OSError("ledger parent directory is unsafe") from None
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or stat.S_IMODE(metadata.st_mode) != 0o700
+            or (hasattr(os, "geteuid") and metadata.st_uid != os.geteuid())
+        ):
+            raise OSError("ledger parent directory is unsafe")
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        flags |= getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(parent, flags)
+        try:
+            opened = os.fstat(descriptor)
+            if (
+                not stat.S_ISDIR(opened.st_mode)
+                or opened.st_dev != metadata.st_dev
+                or opened.st_ino != metadata.st_ino
+                or stat.S_IMODE(opened.st_mode) != 0o700
+                or (hasattr(os, "geteuid") and opened.st_uid != os.geteuid())
+            ):
+                raise OSError("ledger parent directory is unsafe")
+        finally:
+            os.close(descriptor)
+        return True
+
+    @staticmethod
+    def _reject_symlink_components(path: Path) -> None:
+        current = Path(path.anchor) if path.is_absolute() else Path()
+        parts = path.parts[1:] if path.is_absolute() else path.parts
+        for part in parts:
+            current = current / part
+            try:
+                if stat.S_ISLNK(current.lstat().st_mode):
+                    raise OSError("ledger parent directory is unsafe")
+            except FileNotFoundError:
+                return
 
     @staticmethod
     def _repair_incomplete_tail(descriptor: int) -> None:

@@ -7,10 +7,11 @@ keeps a machine-readable *housefile* under the owner's control, returns only the
 capabilities granted to a caller, refuses no-go actions, and records access decisions.
 
 > Pre-alpha scaffold: the scoped-view policy core, authenticated grant lifecycle API,
-> time-policy enforcement, durable local decision ledger, synthetic mock-agent proof run,
-> privacy-first local capture intake, and a guarded GPT-5.6 observation-proposal adapter.
-> Grant metadata still resets on restart; live model quality has not been evaluated, and
-> boundaries, robot adapters, owner console, and hardware interlock are not implemented.
+> crash-recoverable private grant state, timezone-aware command policy, durable local
+> decision ledger, synthetic mock-agent proof run, privacy-first local capture intake, and
+> a guarded GPT-5.6 observation-proposal adapter. Live model quality has not been evaluated,
+> and boundaries, canonical proposal materialization, robot adapters, owner console, and
+> hardware interlock are not implemented.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -30,8 +31,19 @@ stay in ignored local storage.
 - Separate owner authentication for grant issue/revoke and ledger access.
 - Server-generated grant IDs, digest-only credential storage, revocation, RFC3339 expiry,
   and start-inclusive/end-exclusive access windows.
+- An authoritative, revisioned private grant envelope: complete grant metadata persists
+  across restart, while raw bearer credentials never do. Issue, revoke, observed expiry,
+  and the future suspend transition use one ledger-witnessed recovery protocol.
+- Pending issues are never usable before their exact durable ledger receipt. Pending
+  restrictive transitions remain denied; corrupt, missing-with-history, or ambiguous
+  authority state makes grant operations fail closed with `503` rather than loading seeds.
+- Explicit first-boot synthetic seeding only when demo mode and a distinct valid demo
+  credential are configured.
 - Append-only local JSONL decision records with allowlisted fields, fsync-before-response,
   and bounded owner reads. This is durability, not tamper evidence.
+- Command-only quiet-hours gating in an explicit IANA timezone. Active quiet hours produce
+  a durable denial and `403`; an invalid timezone or policy produces no relay and `503`.
+  Scoped reads are unaffected.
 - Loopback-only default; non-loopback binding requires an explicit opt-in.
 - Strict command schema that refuses unsupported verbs and non-empty parameters until
   verb-specific schemas exist, and never claims a stub adapter relayed an action.
@@ -76,15 +88,22 @@ export THS_DEMO_MODE=true
 make run
 ```
 
+On a first boot with no grant-store file and no ledger history, explicit demo mode creates
+only the synthetic `g-neo` grant and durably records that provisioning. An existing store
+is authoritative. Corrupt state, or ledger history with no matching store, returns `503`;
+it never falls back to demo seeds.
+
 In another shell with the same demo grant token exported:
 
 ```bash
 .venv/bin/python scripts/mock_robot.py --grant g-neo
 ```
 
-The script emits three bounded JSON Lines proof records. The middle request returns `503`
-because the policy gate allows it but no adapter exists; `relayed` remains `false`. The
-final workshop request returns `403`. No robot movement is performed or claimed.
+The script emits three bounded JSON Lines proof records. Outside the fixture's configured
+quiet hours, the middle request returns `503` because policy allows it but no adapter
+exists; `relayed` remains `false`. During quiet hours the command is durably denied with
+`403` instead. The final workshop request returns `403`. No robot movement is performed or
+claimed.
 
 ### Owner grant workflow
 
@@ -113,15 +132,27 @@ curl --fail-with-body \
   'http://127.0.0.1:8471/ledger?limit=20'
 ```
 
-The node listens on `127.0.0.1:8471` by default and writes its local ledger under ignored
-`data/` storage unless `THS_LEDGER_PATH` is set. Issued grant metadata is currently
-in-memory and resets on restart. Do not expose the node to a LAN or the internet until the
-threat model, persistent grant store, transport security, and hardware behavior have been
-reviewed.
+The node listens on `127.0.0.1:8471` by default. It writes its private ledger and grant
+envelope under ignored `data/` storage unless `THS_LEDGER_PATH` and
+`THS_GRANT_STORE_PATH` are set. These files are one recovery pair: do not delete, copy, or
+replace only one side and expect the other to be accepted. For an intentionally fresh
+synthetic demo, select a fresh pair of local paths. Never use that reset procedure for real
+household state.
+
+The authority uses a private POSIX advisory lock to serialize reload, recovery, mutation,
+and authenticated use across local instances that share the same store/ledger pair. An
+authorization lease remains held through disclosure or the command decision and its
+receipt, so a concurrent revoke or suspension cannot overtake protected use. This is local
+file coordination, not distributed consensus, and non-POSIX hosts fail the transaction
+lock closed. Synchronous private-file validation and `fsync` still run on the server event
+loop, so this pre-alpha path is not a high-throughput service. Do not expose the node to a
+LAN or the internet until the threat model, transport security, and hardware behavior have
+been reviewed.
 
 Owner and demo grant tokens must be different, 32–512-character visible-ASCII values.
-All `*.jsonl` files are excluded from the public tree because a custom ledger path may
-still contain private activity data.
+The grant store contains credential digests and private grant metadata, not raw bearer
+values. All runtime grant stores and `*.jsonl` files stay local because custom paths can
+still contain private household state and activity data.
 
 ### Local capture intake
 

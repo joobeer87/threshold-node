@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import copy
 import secrets
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from hmac import compare_digest
 from threading import RLock
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -14,13 +18,21 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, SecretStr
 
 from threshold.capture.seed import SEED_FILE, SEED_GRANTS
-from threshold.core.auth import is_valid_bearer_token, token_digest, token_matches
+from threshold.core.auth import is_valid_bearer_token, token_digest
 from threshold.core.config import SETTINGS, Settings
 from threshold.core.errors import ValidationError as ThresholdValidationError
 from threshold.core.events import BUS
 from threshold.core.ledger import JsonlLedger
+from threshold.core.quiet_hours import evaluate_command_quiet_hours
 from threshold.core.types import Access, EventType, Grant, GrantStatus, Housefile, Scope
-from threshold.grants.manager import GrantManager, normalize_time
+from threshold.grants.authority import (
+    GrantAuthenticationFailed,
+    GrantAuthority,
+    GrantAuthorityUnavailable,
+    GrantCredentialConflict,
+)
+from threshold.grants.manager import normalize_time
+from threshold.grants.store import GrantMetadataStore
 from threshold.housefile.scoped_view import scoped_view
 
 
@@ -30,11 +42,34 @@ app = FastAPI(
     description="Pre-alpha local permission node; adapters and safety hardware are not implemented.",
 )
 FILE: Housefile = SEED_FILE
-MGR = GrantManager(FILE)
-for seed_grant in SEED_GRANTS:
-    MGR.grants[seed_grant.id] = seed_grant
 GRANT_LOCK = RLock()
 LEDGER = JsonlLedger(SETTINGS.ledger_path)
+
+
+def _demo_seeds(settings: Settings) -> tuple[Grant, ...]:
+    if not (
+        settings.demo_mode
+        and is_valid_bearer_token(settings.demo_grant_token)
+        and (
+            settings.owner_token is None
+            or not compare_digest(settings.owner_token, settings.demo_grant_token)
+        )
+    ):
+        return ()
+    seed = copy.deepcopy(next(item for item in SEED_GRANTS if item.id == "g-neo"))
+    seed.credential_digest = token_digest(settings.demo_grant_token)
+    return (seed,)
+
+
+AUTHORITY = GrantAuthority(
+    FILE,
+    GrantMetadataStore(SETTINGS.grant_store_path),
+    LEDGER,
+    demo_mode=SETTINGS.demo_mode,
+    demo_seeds=_demo_seeds(SETTINGS),
+    observer=BUS.emit,
+)
+MGR = AUTHORITY.manager
 PYDANTIC_V2 = hasattr(BaseModel, "model_fields")
 
 
@@ -62,6 +97,7 @@ class GrantIssueRequest(StrictRequestModel):
     zones: list[str]
     window: str = Field(default="standing", min_length=1, max_length=128)
     expires: str = Field(default="revocable", min_length=1, max_length=64)
+
 
 class PublicGrant(BaseModel):
     id: str
@@ -101,6 +137,15 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _request_utc() -> datetime:
+    """Capture and normalize the request clock exactly once under the grant lock."""
+
+    try:
+        return normalize_time(_now(), "current time")
+    except ThresholdValidationError as exc:
+        raise HTTPException(503, "node clock is invalid") from exc
+
+
 def _rfc3339(value: datetime) -> str:
     normalized = normalize_time(value, "current time")
     return normalized.isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -126,7 +171,14 @@ def _public_grant(grant: Grant) -> PublicGrant:
     )
 
 
-def require_owner(
+def _ensure_authority(now: datetime) -> None:
+    try:
+        AUTHORITY.ensure_ready(now=now)
+    except GrantAuthorityUnavailable as exc:
+        raise HTTPException(503, "grant authority unavailable") from exc
+
+
+async def require_owner(
     x_threshold_owner_token: SecretStr | None = Header(
         default=None,
         alias="X-Threshold-Owner-Token",
@@ -150,18 +202,6 @@ def require_owner(
         raise HTTPException(401, "owner authentication required")
 
 
-def _authorized_grant(grant_id: str, supplied_token: SecretStr | None) -> Grant:
-    grant = MGR.grants.get(grant_id)
-    raw_token = supplied_token.get_secret_value() if supplied_token is not None else None
-    if (
-        grant is None
-        or not is_valid_bearer_token(raw_token)
-        or not token_matches(raw_token, grant.credential_digest)
-    ):
-        raise HTTPException(401, "grant authentication required")
-    return grant
-
-
 def _log(
     event_type: EventType,
     agent: str,
@@ -175,8 +215,8 @@ def _log(
     timestamp_source = now or datetime.now(timezone.utc)
     try:
         timestamp = _rfc3339(timestamp_source)
-    except ThresholdValidationError:
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    except ThresholdValidationError as exc:
+        raise HTTPException(503, "node clock is invalid") from exc
     event: dict[str, object] = {
         "ts": timestamp,
         "type": event_type.value,
@@ -193,36 +233,45 @@ def _log(
     return persisted
 
 
+@contextmanager
 def _usable_grant(
     grant_id: str,
     supplied_token: SecretStr | None,
     *,
     action: Literal["scoped read", "command"],
     now: datetime,
-) -> Grant:
-    grant = _authorized_grant(grant_id, supplied_token)
-    previous_status = grant.status
-    decision = MGR.decision(grant, now=now)
-    if not decision.allowed:
-        try:
-            _log(
-                EventType.DENY,
-                grant.id,
-                f"{action} refused: {decision.reason}",
-                now=now,
-            )
-        except HTTPException:
-            grant.status = previous_status
-            raise
-        raise HTTPException(
-            403,
-            detail={"policy_decision": "denied", "reason": decision.reason},
-        )
-    return grant
+) -> Iterator[Grant]:
+    raw_token = (
+        supplied_token.get_secret_value() if supplied_token is not None else None
+    )
+    try:
+        with AUTHORITY.authorized(
+            grant_id,
+            raw_token,
+            now=now,
+            action=action,
+        ) as (grant, decision):
+            if not decision.allowed:
+                if decision.next_status is None:
+                    _log(
+                        EventType.DENY,
+                        grant.id,
+                        f"{action} refused: {decision.reason}",
+                        now=now,
+                    )
+                raise HTTPException(
+                    403,
+                    detail={"policy_decision": "denied", "reason": decision.reason},
+                )
+            yield grant
+    except GrantAuthenticationFailed as exc:
+        raise HTTPException(401, "grant authentication required") from exc
+    except GrantAuthorityUnavailable as exc:
+        raise HTTPException(503, "grant authority unavailable") from exc
 
 
 @app.get("/health")
-def health() -> dict[str, object]:
+async def health() -> dict[str, object]:
     return {
         "service": "up",
         "release_stage": "pre-alpha",
@@ -230,13 +279,15 @@ def health() -> dict[str, object]:
         "interlock": "not_implemented",
         "ledger": "persistent_jsonl_configured",
         "ledger_availability": "not_probed",
+        "grant_store": "authoritative_digest_only_configured",
+        "grant_store_availability": "not_probed",
         "adapters": [],
         "demo_mode": SETTINGS.demo_mode,
     }
 
 
 @app.get("/.well-known/aurora", include_in_schema=False)
-def aurora_signature() -> dict[str, object]:
+async def aurora_signature() -> dict[str, object]:
     """Public design signature, not an embedded private AuroraOS runtime."""
 
     return {
@@ -259,7 +310,7 @@ def aurora_signature() -> dict[str, object]:
 
 
 @app.get("/housefile")
-def housefile(
+async def housefile(
     grant: str,
     x_threshold_grant_token: SecretStr | None = Header(
         default=None,
@@ -267,21 +318,123 @@ def housefile(
     ),
 ) -> dict[str, object]:
     with GRANT_LOCK:
-        request_now = _now()
-        active_grant = _usable_grant(
+        request_now = _request_utc()
+        with _usable_grant(
             grant,
             x_threshold_grant_token,
             action="scoped read",
             now=request_now,
+        ) as active_grant:
+            payload = scoped_view(FILE, active_grant)
+            event_type = EventType.DENY if "error" in payload else EventType.READ
+            _log(event_type, active_grant.id, "scoped read", now=request_now)
+            return payload
+
+
+def _evaluate_command(
+    body: CommandRequest,
+    active_grant: Grant,
+    *,
+    now: datetime,
+) -> None:
+    try:
+        policy_zone = ZoneInfo(FILE.policies.timezone)
+        policy_now = now.astimezone(policy_zone)
+    except (AttributeError, TypeError, ValueError, ZoneInfoNotFoundError):
+        _log(
+            EventType.DENY,
+            active_grant.id,
+            "command refused: quiet_hours_timezone_invalid",
+            now=now,
         )
-        payload = scoped_view(FILE, active_grant)
-        event_type = EventType.DENY if "error" in payload else EventType.READ
-        _log(event_type, active_grant.id, "scoped read", now=request_now)
-        return payload
+        raise HTTPException(
+            503,
+            detail={
+                "policy_decision": "denied",
+                "relayed": False,
+                "reason": "quiet_hours_timezone_invalid",
+            },
+        )
+    quiet_hours = evaluate_command_quiet_hours(
+        FILE.policies.quiet_start,
+        FILE.policies.quiet_end,
+        now=policy_now,
+    )
+    if not quiet_hours.allowed:
+        _log(
+            EventType.DENY,
+            active_grant.id,
+            f"command refused: {quiet_hours.reason}",
+            now=now,
+        )
+        raise HTTPException(
+            403 if quiet_hours.reason == "quiet_hours_active" else 503,
+            detail={
+                "policy_decision": "denied",
+                "relayed": False,
+                "reason": quiet_hours.reason,
+            },
+        )
+    zone = FILE.zone(body.zone)
+    required_scope = {
+        "navigate": Scope.CMD_NAVIGATE,
+        "manipulate": Scope.CMD_MANIPULATE,
+    }[body.verb]
+    if body.params:
+        _log(
+            EventType.DENY,
+            active_grant.id,
+            "command refused: parameters unsupported",
+            now=now,
+        )
+        raise HTTPException(
+            403,
+            detail={
+                "policy_decision": "denied",
+                "relayed": False,
+                "reason": "unsupported_params",
+            },
+        )
+    if (
+        zone is None
+        or zone.id not in active_grant.zones
+        or zone.access == Access.NO_GO
+        or required_scope not in active_grant.scopes
+    ):
+        _log(
+            EventType.DENY,
+            active_grant.id,
+            "command refused: policy boundary",
+            now=now,
+        )
+        raise HTTPException(
+            403,
+            detail={
+                "policy_decision": "denied",
+                "relayed": False,
+                "reason": "gate_refused",
+            },
+        )
+    _log(
+        EventType.DENY,
+        active_grant.id,
+        "command not relayed: adapter unavailable",
+        now=now,
+        tier="UNAVAILABLE",
+    )
+    raise HTTPException(
+        503,
+        detail={
+            "policy_decision": "allowed",
+            "relayed": False,
+            "reason": "adapter_not_configured",
+            "tier": "UNAVAILABLE",
+        },
+    )
 
 
 @app.post("/command")
-def command(
+async def command(
     body: CommandRequest,
     x_threshold_grant_token: SecretStr | None = Header(
         default=None,
@@ -289,69 +442,14 @@ def command(
     ),
 ) -> None:
     with GRANT_LOCK:
-        request_now = _now()
-        active_grant = _usable_grant(
+        request_now = _request_utc()
+        with _usable_grant(
             body.grant,
             x_threshold_grant_token,
             action="command",
             now=request_now,
-        )
-        zone = FILE.zone(body.zone)
-        required_scope = {
-            "navigate": Scope.CMD_NAVIGATE,
-            "manipulate": Scope.CMD_MANIPULATE,
-        }[body.verb]
-        if body.params:
-            _log(
-                EventType.DENY,
-                active_grant.id,
-                "command refused: parameters unsupported",
-                now=request_now,
-            )
-            raise HTTPException(
-                403,
-                detail={
-                    "policy_decision": "denied",
-                    "relayed": False,
-                    "reason": "unsupported_params",
-                },
-            )
-        if (
-            zone is None
-            or zone.id not in active_grant.zones
-            or zone.access == Access.NO_GO
-            or required_scope not in active_grant.scopes
-        ):
-            _log(
-                EventType.DENY,
-                active_grant.id,
-                "command refused: policy boundary",
-                now=request_now,
-            )
-            raise HTTPException(
-                403,
-                detail={
-                    "policy_decision": "denied",
-                    "relayed": False,
-                    "reason": "gate_refused",
-                },
-            )
-        _log(
-            EventType.DENY,
-            active_grant.id,
-            "command not relayed: adapter unavailable",
-            now=request_now,
-            tier="UNAVAILABLE",
-        )
-        raise HTTPException(
-            503,
-            detail={
-                "policy_decision": "allowed",
-                "relayed": False,
-                "reason": "adapter_not_configured",
-                "tier": "UNAVAILABLE",
-            },
-        )
+        ) as active_grant:
+            _evaluate_command(body, active_grant, now=request_now)
 
 
 @app.post(
@@ -359,7 +457,7 @@ def command(
     status_code=201,
     response_model=GrantIssueResponse,
 )
-def issue_grant(
+async def issue_grant(
     body: GrantIssueRequest,
     x_threshold_new_grant_token: SecretStr = Header(
         ...,
@@ -379,15 +477,23 @@ def issue_grant(
         raise HTTPException(422, "grant credential must differ from owner credential")
     credential_digest = token_digest(raw_credential)
 
-    if not body.scopes or len(body.scopes) > 16 or not body.zones or len(body.zones) > 32:
+    if (
+        not body.scopes
+        or len(body.scopes) > 16
+        or not body.zones
+        or len(body.zones) > 32
+    ):
         raise HTTPException(422, "grant needs bounded non-empty scopes and zones")
     if body.name != body.name.strip() or any(zone != zone.strip() for zone in body.zones):
         raise HTTPException(422, "grant text fields must not have surrounding whitespace")
-    if len(set(body.scopes)) != len(body.scopes) or len(set(body.zones)) != len(body.zones):
+    if len(set(body.scopes)) != len(body.scopes) or len(set(body.zones)) != len(
+        body.zones
+    ):
         raise HTTPException(422, "grant scopes and zones must be unique")
 
     with GRANT_LOCK:
-        request_now = _now()
+        request_now = _request_utc()
+        _ensure_authority(request_now)
         try:
             issued = _rfc3339(request_now)
         except ThresholdValidationError as exc:
@@ -395,14 +501,14 @@ def issue_grant(
         if any(
             existing.credential_digest
             and compare_digest(credential_digest, existing.credential_digest)
-            for existing in MGR.grants.values()
+            for existing in AUTHORITY.grants.values()
         ):
             raise HTTPException(409, "grant credential is already registered")
 
         grant_id = ""
         for _ in range(5):
             candidate = _new_grant_id()
-            if candidate not in MGR.grants:
+            if candidate not in AUTHORITY.grants:
                 grant_id = candidate
                 break
         if not grant_id:
@@ -420,14 +526,13 @@ def issue_grant(
             credential_digest=credential_digest,
         )
         try:
-            MGR.issue(grant, now=request_now)
+            grant = AUTHORITY.issue(grant, now=request_now)
+        except GrantCredentialConflict as exc:
+            raise HTTPException(409, "grant credential is already registered") from exc
         except ThresholdValidationError as exc:
             raise HTTPException(422, "grant policy is invalid") from exc
-        try:
-            _log(EventType.GRANT, grant.id, "grant issued", now=request_now)
-        except HTTPException:
-            MGR.grants.pop(grant.id, None)
-            raise
+        except GrantAuthorityUnavailable as exc:
+            raise HTTPException(503, "grant authority unavailable") from exc
         return GrantIssueResponse(
             grant=_public_grant(grant),
             credential_registered=True,
@@ -438,31 +543,28 @@ def issue_grant(
     "/grants/{grant_id}/revoke",
     response_model=GrantRevokeResponse,
 )
-def revoke_grant(
+async def revoke_grant(
     grant_id: str,
     _owner: None = Depends(require_owner),
 ) -> GrantRevokeResponse:
     del _owner
     with GRANT_LOCK:
-        request_now = _now()
-        grant = MGR.grants.get(grant_id)
+        request_now = _request_utc()
+        _ensure_authority(request_now)
+        grant = AUTHORITY.grants.get(grant_id)
         if grant is None:
             raise HTTPException(404, "grant not found")
-        if grant.status in {GrantStatus.REVOKED, GrantStatus.EXPIRED}:
-            return GrantRevokeResponse(grant=_public_grant(grant), changed=False)
-
-        previous_status = grant.status
-        MGR.revoke(grant_id)
         try:
-            _log(EventType.REVOKE, grant.id, "grant revoked", now=request_now)
-        except HTTPException:
-            grant.status = previous_status
-            raise
-        return GrantRevokeResponse(grant=_public_grant(grant), changed=True)
+            grant, changed = AUTHORITY.revoke(grant_id, now=request_now)
+        except GrantAuthorityUnavailable as exc:
+            raise HTTPException(503, "grant authority unavailable") from exc
+        return GrantRevokeResponse(grant=_public_grant(grant), changed=changed)
 
 
 @app.get("/ledger", dependencies=[Depends(require_owner)])
-def ledger(limit: int = Query(default=100, ge=1, le=1_000)) -> list[dict[str, object]]:
+async def ledger(
+    limit: int = Query(default=100, ge=1, le=1_000),
+) -> list[dict[str, object]]:
     try:
         return LEDGER.read(limit, fail_on_unavailable=True)
     except OSError as exc:

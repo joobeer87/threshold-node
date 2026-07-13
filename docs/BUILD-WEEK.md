@@ -36,8 +36,9 @@ access, and the video limit before making the final choice.
 1. A phone walk becomes a bounded, private local frame batch.
 2. A guarded GPT-5.6 structured-output step turns selected frames into a constrained,
    incomplete observation proposal.
-3. The owner reviews and confirms the digest-bound proposal; THS-0022 geometry and a later
-   reviewed materialization step are still required before it can become policy.
+3. The owner reviews and confirms the digest-bound proposal; deterministic THS-0022
+   geometry and separate owner-reviewed THS-0023 materialization are still required before
+   it can become policy. The model never chooses access, no-go, or outdoor status.
 4. A simulated physical agent receives a scoped view and is denied access to a no-go zone.
 5. The Jetson-connected I/O rig shows the decision, records a receipt, and responds to the
    prototype stop control.
@@ -57,6 +58,13 @@ structured output. Upload requires an explicit flag; requests use `store:false` 
 tools. Provider output remains untrusted and is deterministically revalidated before a
 private proposal can reach a separate owner-decision step.
 
+Grant metadata is authoritative across restart in a private digest-only snapshot paired
+with the decision ledger. A revisioned pending transaction makes the durable ledger receipt
+the issue commit point and keeps restrictive transitions denied during recovery. Synthetic
+seeding is limited to a genuinely empty first boot with explicit demo mode; existing corrupt
+or ambiguous state returns unavailable instead of falling back to seeds. Quiet hours use an
+explicit IANA timezone, capture UTC once inside the grant lock, and gate commands only.
+
 ## Where Threshold Node stands
 
 The scoped-view core, owner/per-grant API boundaries, grant issue and revocation, RFC3339
@@ -67,13 +75,18 @@ relayed because no adapter exists, and a no-go denial. It does not move hardware
 The privacy-first local capture intake is implemented for JPEG/PNG photos and MOV/MP4/M4V
 video: it creates a bounded normalized batch under ignored `data/capture/`, without a model
 call or canonical housefile write. Its local boundary, cleanup, receipt, scanner, and
-synthetic FFmpeg proofs pass. The persistent grant store, live owner console, real robot
-adapters, hardware bridge, and complete submission demo still need to be built and tested.
-The GPT-5.6 request adapter, strict
-proposal validator, and digest-bound owner decision are now implemented and provider-free
-tested, but a live synthetic model quality/cost evaluation has not been run. Geometry and
-canonical housefile materialization remain explicitly out of scope. The repository should
-only claim a capability after its code and demo evidence exist.
+synthetic FFmpeg proofs pass. The grant authority now persists digest-only state across
+restart with fail-closed ledger-bound recovery, and IANA quiet hours deny commands without
+blocking scoped reads. The private store and ledger are a pair; neither is a public artifact
+or tamper-evident record.
+
+The GPT-5.6 request adapter, strict proposal validator, and digest-bound owner decision are
+implemented and provider-free tested. A live synthetic model quality, cost, latency, and
+token-use evaluation has not been run, so THS-0021 is complete as a guarded adapter but is
+not demo-proven model evidence. THS-0022 geometry, THS-0023 owner-reviewed canonical
+materialization, the live owner console, real robot adapters, hardware bridge, and complete
+submission demo still need to be built and tested. The repository should only claim a
+capability after its code and demo evidence exist.
 
 Real-room footage can make the video stronger, but the source and normalized capture batch
 must stay local. Any externally published edit must pass `REAL-FOOTAGE-CHECKLIST.md`, and

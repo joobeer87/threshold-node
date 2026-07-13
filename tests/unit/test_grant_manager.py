@@ -81,7 +81,8 @@ def test_expiration_is_enforced_and_updates_status():
     decision = manager.decision(item, now=NOW + timedelta(minutes=5))
     assert decision.allowed is False
     assert decision.reason == "grant_expired"
-    assert item.status == GrantStatus.EXPIRED
+    assert decision.next_status == GrantStatus.EXPIRED
+    assert item.status == GrantStatus.ACTIVE
 
 
 def test_one_time_window_is_start_inclusive_and_end_exclusive():
@@ -94,8 +95,10 @@ def test_one_time_window_is_start_inclusive_and_end_exclusive():
     assert manager.decision(item, now=NOW).reason == "grant_outside_window"
     assert manager.decision(item, now=start).allowed is True
     assert manager.decision(item, now=end - timedelta(microseconds=1)).allowed is True
-    assert manager.decision(item, now=end).reason == "grant_expired"
-    assert item.status == GrantStatus.EXPIRED
+    decision = manager.decision(item, now=end)
+    assert decision.reason == "grant_expired"
+    assert decision.next_status == GrantStatus.EXPIRED
+    assert item.status == GrantStatus.ACTIVE
 
 
 def test_expiration_must_leave_a_non_empty_window():

@@ -2,23 +2,25 @@
 
 | Surface | Impact | State |
 |---|---|---|
-| README | pre-alpha status, private proposal/decision workflow, external-processing warning, claims | Updated for THS-0021 |
-| AGENTS.md | durable public-repo and validation rules | Added |
-| SECURITY.md | disclosure and demo boundaries | Added |
-| HARDWARE.md | GPIO correction and prototype warning | Updated |
-| SPEC-NODE + SPEC-THS | private proposal schema, authority exclusions, digest-bound owner decision | Updated for THS-0021 |
-| ARCHITECTURE | external model boundary, strict validator, private decision, no canonical write | Updated for THS-0021 |
-| PRIVACY | upload consent, provider request, proposal/decision storage, receipt boundaries | Updated for THS-0021 |
+| README | authoritative restart persistence, paired private state, IANA quiet-hours claims, live-eval warning | Updated for THS-0017/THS-0072 |
+| AGENTS.md | public-repo, synthetic-only, validation, and operator boundaries | Reviewed; no change |
+| SECURITY.md | private grant metadata, paired recovery, quiet-hours and live-eval boundaries | Updated for Wave 4 |
+| HARDWARE.md | prototype warning and later-wave hardware boundary | Reviewed; no change |
+| SPEC-NODE + SPEC-THS | grant transaction/recovery authority, persistent states, IANA command-only quiet hours | Updated for THS-0017/THS-0072 |
+| ARCHITECTURE | store/ledger commit point, target witness, cross-instance lock and authorization lease | Updated for Wave 4 |
+| PRIVACY | digest sensitivity, store/ledger pair, recovery and timezone privacy | Updated for Wave 4 |
 | AURORA-EASTER-EGG | honest public Aurora framework signature | Replaced leak concept |
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0021 implementation and live-eval boundary | Updated for THS-0021 |
-| BUILD-WEEK | provider-free proposal evidence separated from live model/demo proof | Updated for THS-0021 |
-| DEMO-SCRIPT | exact no-motion mock proof separated from target hardware video | Updated |
-| PUBLICATION-CHECKLIST | exact GPT-5.6 adapter claim versus blocked live-eval claim | Updated for THS-0021 |
-| Delivery records | THS-0021 feature, QA, docs-impact, and scoped delivery receipt | Updated for THS-0021 |
+| KANBAN | THS-0017 and THS-0023 added; THS-0021/0072 states and downstream dependencies corrected | Updated for Wave 4 |
+| BUILD-WEEK | durable grant/quiet-hours evidence separated from later waves and live model proof | Updated for Wave 4 |
+| DEMO-SCRIPT | restart seeding and wall-clock quiet-hours behavior documented | Updated for Wave 4 |
+| Config example | paired private paths, first-boot seeding, canonical timezone location | Updated for Wave 4 |
+| PUBLICATION-CHECKLIST | private authority files, bounded claims, live-eval gate | Updated for Wave 4 |
+| Delivery records | F014/F015 feature, QA, docs-impact, and scoped receipt | Updated for Wave 4 |
 
-PR #2 is merged. THS-0021 changes remain local on `agent/ths-0021-vision-proposals` while
-the final local gate and review are in progress. Current-branch push, pull request, merge,
-deployment, and submission remain separate delivery states.
+PR #3 is merged at `a109b4d`. Wave 4 is prepared on
+`agent/wave4-trust-foundation` for its separately authorized draft PR. This receipt does not
+claim draft-PR checks, review, merge, deployment, provider mutation, hardware operation, or
+submission readiness.

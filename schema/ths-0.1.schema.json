@@ -29,7 +29,21 @@
     "quirks": {"type": "array", "items": {"type": "object", "required": ["id", "zone", "text"]}},
     "policies": {"type": "object", "required": ["quietHours"],
       "properties": {
-        "quietHours": {"type": "object", "required": ["start", "end"]},
+        "quietHours": {
+          "type": "object",
+          "required": ["start", "end", "timezone"],
+          "properties": {
+            "start": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"},
+            "end": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"},
+            "timezone": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)*$"
+            }
+          },
+          "additionalProperties": false
+        },
         "teleop": {"enum": ["per-session", "never"]},
         "residency": {"type": "string"}}}
   }

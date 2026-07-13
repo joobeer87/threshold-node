@@ -15,11 +15,19 @@ def test_defaults_bind_to_loopback_without_credentials():
     assert settings.owner_token is None
     assert settings.demo_grant_token is None
     assert settings.ledger_path == "data/ledger.jsonl"
+    assert settings.grant_store_path == "data/grants.json"
 
 
 def test_ledger_path_can_be_set_without_exposing_it_in_runtime_validation():
     settings = Settings.from_env({"THS_LEDGER_PATH": "data/synthetic-ledger.jsonl"})
     assert settings.ledger_path == "data/synthetic-ledger.jsonl"
+
+
+def test_grant_store_path_can_be_configured():
+    settings = Settings.from_env(
+        {"THS_GRANT_STORE_PATH": "data/synthetic-grants.json"}
+    )
+    assert settings.grant_store_path == "data/synthetic-grants.json"
 
 
 def test_runtime_rejects_missing_owner_token():

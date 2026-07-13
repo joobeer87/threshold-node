@@ -16,6 +16,8 @@ real household. The public repository therefore ships only fictional data.
 ## What stays local
 
 - Populated environment files and bearer tokens.
+- The private digest-only grant metadata store. Credential digests are still sensitive
+  authentication material even though raw grant credentials are never persisted.
 - Real housefiles, room names, schedules, maps, inventory, quirks, and system details.
 - Raw camera/audio frames and model prompts containing household context.
 - Normalized frame batches and capture manifests under `data/capture/`; derived media is
@@ -28,6 +30,27 @@ real household. The public repository therefore ships only fictional data.
 - Every real-capture runtime receipt, including its batch ID and manifest hash; omission of
   paths and room labels does not make a real-household receipt publication-safe.
 - Every `*.jsonl` runtime ledger, including one written outside the default `data/` path.
+
+## Local trust-state boundary
+
+The grant metadata snapshot and decision ledger are one private recovery boundary. The
+snapshot stores bounded grant metadata and credential digests, never raw credentials; the
+ledger stores the durable receipts that commit grant revisions. Keep both files under
+ignored owner-controlled storage with private directory/file permissions, and back up,
+move, or restore them together. Neither file is publication-safe or tamper-evident.
+
+On a genuinely empty first boot, Threshold creates no grants unless explicit synthetic demo
+mode is enabled with a separate demo grant credential. Once either trust-state file has
+history, missing, corrupt, mismatched, or ambiguous recovery state fails closed. The node
+must return an unavailable response rather than silently rebuilding grants from synthetic
+seeds. Pending grant issue is not usable until its durable ledger receipt exists; pending
+revoke, expiry, and suspension transitions remain restrictive during recovery.
+
+Quiet-hours schedules and their IANA timezone can disclose occupancy patterns and location
+context, so they remain part of the private canonical housefile. The command gate captures
+one UTC instant, converts it to that policy timezone, and denies commands during the local
+window. A malformed schedule or unresolvable timezone fails the command closed; scoped
+reads remain governed by the ordinary grant and disclosure policy.
 
 ## Model boundary
 
@@ -58,15 +81,23 @@ provider or the housefile store. Hash binding detects changes but is not tamper 
 against an attacker who controls the local filesystem. Deterministic policy—not a
 model—decides disclosure and command authorization.
 
+THS-0021's provider adapter and provider-free validation are implemented, but no reviewed
+live synthetic GPT-5.6 run yet proves response quality, latency, token use, or cost. A future
+THS-0022 geometry proposal remains deterministic and digest-bound to explicit room order;
+it cannot infer access, no-go, or outdoor policy. THS-0023 is a separate owner-reviewed
+materialization step that must bind exact proposal and geometry digests, require explicit
+access/outdoor choices and the expected housefile revision, validate the schema, and commit
+atomically. It must never apply a real dwelling proposal automatically.
+
 ## Receipt boundary
 
-The local decision ledger allowlists only `ts`, `type`, `agent`, `detail`, and optional
-`tier`; API code writes fixed detail strings rather than request parameters. Checked-in
-delivery receipts must be derived only from synthetic fixtures and may contain bounded
-counts, rule IDs, hashes, and pass/fail status. Real capture and proposal receipts stay
-local even though their output shape is sanitized. Neither checked-in form contains
-prompts, tokens, raw payloads, URLs, device identifiers, private notes, or raw ledger
-bodies.
+The local decision ledger allowlists only `ts`, `type`, `agent`, `detail`, optional `tier`,
+and a validated transaction/revision pair for grant commits; API code writes fixed detail
+strings rather than request parameters. Checked-in delivery receipts must be derived only
+from synthetic fixtures and may contain bounded counts, rule IDs, hashes, and pass/fail
+status. Real capture and proposal receipts stay local even though their output shape is
+sanitized. Neither checked-in form contains prompts, tokens, raw payloads, URLs, device
+identifiers, private notes, or raw ledger bodies.
 
 ## Pre-push gate
 

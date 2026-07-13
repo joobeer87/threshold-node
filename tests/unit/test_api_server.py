@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -16,7 +17,8 @@ from threshold.core.auth import token_digest
 from threshold.core.config import Settings
 from threshold.core.ledger import JsonlLedger
 from threshold.core.types import EventType, Grant, GrantStatus, Scope
-from threshold.grants.manager import GrantManager
+from threshold.grants.authority import GrantAuthority
+from threshold.grants.store import GrantMetadataStore
 
 
 OWNER_VALUE = "owner-local-test-value-000000000001"
@@ -67,20 +69,32 @@ def configured_server(monkeypatch, tmp_path):
         owner_token=OWNER_VALUE,
         demo_grant_token=GRANT_VALUE,
         ledger_path=str(tmp_path / "private" / "ledger.jsonl"),
+        grant_store_path=str(tmp_path / "private" / "grants.json"),
         demo_mode=True,
     )
-    manager = GrantManager(server.FILE)
-    for source in SEED_GRANTS:
-        seeded = copy.deepcopy(source)
-        if seeded.id == "g-neo":
-            seeded.credential_digest = token_digest(GRANT_VALUE)
-        manager.grants[seeded.id] = seeded
+    seeded = copy.deepcopy(next(item for item in SEED_GRANTS if item.id == "g-neo"))
+    seeded.credential_digest = token_digest(GRANT_VALUE)
+    ledger = JsonlLedger(settings.ledger_path)
+    authority = GrantAuthority(
+        server.FILE,
+        GrantMetadataStore(settings.grant_store_path),
+        ledger,
+        demo_mode=True,
+        demo_seeds=(seeded,),
+    )
+    authority.ensure_ready(now=NOW)
 
     monkeypatch.setattr(server, "SETTINGS", settings)
-    monkeypatch.setattr(server, "MGR", manager)
-    monkeypatch.setattr(server, "LEDGER", JsonlLedger(settings.ledger_path))
+    monkeypatch.setattr(server, "AUTHORITY", authority)
+    monkeypatch.setattr(server, "MGR", authority.manager)
+    monkeypatch.setattr(server, "LEDGER", ledger)
     monkeypatch.setattr(server, "_now", lambda: NOW)
     monkeypatch.setattr(server, "_new_grant_id", lambda: "g-issued-test")
+
+
+def persist_grant(grant: Grant, *, issued_at: datetime) -> Grant:
+    grant.issued = timestamp(issued_at)
+    return server.AUTHORITY.issue(grant, now=issued_at)
 
 
 def test_health_and_aurora_signature_remain_truthful():
@@ -177,7 +191,9 @@ def test_issue_registers_only_a_digest_and_returns_a_safe_projection():
     assert stored.credential_digest == token_digest(NEW_GRANT_VALUE)
     assert NEW_GRANT_VALUE not in repr(stored)
     assert stored.credential_digest not in repr(stored)
-    assert [entry["type"] for entry in server.LEDGER.read()] == [EventType.GRANT.value]
+    assert [entry["type"] for entry in server.LEDGER.read()].count(
+        EventType.GRANT.value
+    ) == 1
 
 
 def test_issued_credential_authenticates_only_its_grant():
@@ -249,7 +265,9 @@ def test_invalid_grants_fail_with_422_and_are_not_stored(payload):
     response = request("POST", "/grants", headers=owner_headers(), json=payload)
     assert response.status_code == 422
     assert "g-issued-test" not in server.MGR.grants
-    assert server.LEDGER.read() == []
+    assert [entry["type"] for entry in server.LEDGER.read()] == [
+        EventType.PROVISION.value
+    ]
 
 
 def test_semantic_grant_errors_do_not_reflect_zone_values():
@@ -315,7 +333,7 @@ def test_expiry_is_enforced_on_housefile_and_command_at_the_exact_boundary(monke
         expires=timestamp(NOW),
         credential_digest=token_digest(NEW_GRANT_VALUE),
     )
-    server.MGR.grants[expiring.id] = expiring
+    expiring = persist_grant(expiring, issued_at=NOW - timedelta(hours=1))
     headers = {"X-Threshold-Grant-Token": NEW_GRANT_VALUE}
 
     monkeypatch.setattr(server, "_now", lambda: NOW - timedelta(microseconds=1))
@@ -329,7 +347,7 @@ def test_expiry_is_enforced_on_housefile_and_command_at_the_exact_boundary(monke
     )
     assert expired_read.status_code == 403
     assert expired_read.json()["detail"]["reason"] == "grant_expired"
-    assert expiring.status == GrantStatus.EXPIRED
+    assert server.AUTHORITY.grants[expiring.id].status == GrantStatus.EXPIRED
 
     expired_command = request(
         "POST",
@@ -353,7 +371,7 @@ def test_one_time_window_is_enforced_by_the_api(monkeypatch):
         window=f"{timestamp(start)}/{timestamp(end)}",
         credential_digest=token_digest(NEW_GRANT_VALUE),
     )
-    server.MGR.grants[windowed.id] = windowed
+    windowed = persist_grant(windowed, issued_at=NOW - timedelta(hours=1))
     headers = {"X-Threshold-Grant-Token": NEW_GRANT_VALUE}
 
     before = request(
@@ -404,6 +422,199 @@ def test_command_contract_distinguishes_policy_allowance_from_relay():
     }
 
 
+def test_active_quiet_hours_durably_deny_commands_only(monkeypatch):
+    monkeypatch.setattr(
+        server,
+        "FILE",
+        replace(
+            server.FILE,
+            policies=replace(
+                server.FILE.policies,
+                quiet_start="11:30",
+                quiet_end="12:30",
+                timezone="Etc/UTC",
+            ),
+        ),
+    )
+    headers = {"X-Threshold-Grant-Token": GRANT_VALUE}
+
+    read = request("GET", "/housefile", params={"grant": "g-neo"}, headers=headers)
+    denied = request(
+        "POST",
+        "/command",
+        headers=headers,
+        json={"grant": "g-neo", "verb": "navigate", "zone": "kitchen"},
+    )
+
+    assert read.status_code == 200
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == {
+        "policy_decision": "denied",
+        "relayed": False,
+        "reason": "quiet_hours_active",
+    }
+    assert server.LEDGER.read()[0]["detail"] == (
+        "command refused: quiet_hours_active"
+    )
+
+
+@pytest.mark.parametrize(
+    ("request_now", "expected_status", "expected_reason"),
+    [
+        (
+            datetime(2026, 11, 1, 5, 29, tzinfo=timezone.utc),
+            503,
+            "adapter_not_configured",
+        ),
+        (
+            datetime(2026, 11, 1, 5, 30, tzinfo=timezone.utc),
+            403,
+            "quiet_hours_active",
+        ),
+        (
+            datetime(2026, 11, 1, 6, 30, tzinfo=timezone.utc),
+            403,
+            "quiet_hours_active",
+        ),
+        (
+            datetime(2026, 11, 1, 7, 30, tzinfo=timezone.utc),
+            503,
+            "adapter_not_configured",
+        ),
+    ],
+)
+def test_quiet_hours_use_iana_zoneinfo_across_dst_fold(
+    monkeypatch,
+    request_now,
+    expected_status,
+    expected_reason,
+):
+    monkeypatch.setattr(server, "_now", lambda: request_now)
+    monkeypatch.setattr(
+        server,
+        "FILE",
+        replace(
+            server.FILE,
+            policies=replace(
+                server.FILE.policies,
+                quiet_start="01:30",
+                quiet_end="02:30",
+                timezone="America/Toronto",
+            ),
+        ),
+    )
+
+    response = request(
+        "POST",
+        "/command",
+        headers={"X-Threshold-Grant-Token": GRANT_VALUE},
+        json={"grant": "g-neo", "verb": "navigate", "zone": "kitchen"},
+    )
+
+    assert response.status_code == expected_status
+    assert response.json()["detail"]["reason"] == expected_reason
+
+
+@pytest.mark.parametrize(
+    ("timezone_name", "quiet_start", "reason"),
+    [
+        ("Synthetic/Not-A-Timezone", "21:30", "quiet_hours_timezone_invalid"),
+        ("Etc/UTC", "25:00", "quiet_hours_invalid"),
+    ],
+)
+def test_invalid_quiet_hours_fail_commands_closed_but_not_reads(
+    monkeypatch,
+    timezone_name,
+    quiet_start,
+    reason,
+):
+    monkeypatch.setattr(
+        server,
+        "FILE",
+        replace(
+            server.FILE,
+            policies=replace(
+                server.FILE.policies,
+                quiet_start=quiet_start,
+                timezone=timezone_name,
+            ),
+        ),
+    )
+    headers = {"X-Threshold-Grant-Token": GRANT_VALUE}
+
+    read = request("GET", "/housefile", params={"grant": "g-neo"}, headers=headers)
+    command = request(
+        "POST",
+        "/command",
+        headers=headers,
+        json={"grant": "g-neo", "verb": "navigate", "zone": "kitchen"},
+    )
+
+    assert read.status_code == 200
+    assert command.status_code == 503
+    assert command.json()["detail"] == {
+        "policy_decision": "denied",
+        "relayed": False,
+        "reason": reason,
+    }
+    assert server.LEDGER.read()[0]["detail"] == f"command refused: {reason}"
+
+
+def test_quiet_hours_deny_is_not_returned_until_the_receipt_is_durable(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        server,
+        "FILE",
+        replace(
+            server.FILE,
+            policies=replace(
+                server.FILE.policies,
+                quiet_start="11:30",
+                quiet_end="12:30",
+                timezone="Etc/UTC",
+            ),
+        ),
+    )
+
+    def fail_record(*_args, **_kwargs):
+        raise OSError("synthetic durable deny failure")
+
+    monkeypatch.setattr(server.LEDGER, "record_event", fail_record)
+    response = request(
+        "POST",
+        "/command",
+        headers={"X-Threshold-Grant-Token": GRANT_VALUE},
+        json={"grant": "g-neo", "verb": "navigate", "zone": "kitchen"},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "audit ledger unavailable"}
+    assert "synthetic durable deny failure" not in response.text
+
+
+def test_command_captures_utc_once_for_policy_and_receipt(monkeypatch):
+    calls = 0
+
+    def counted_now():
+        nonlocal calls
+        calls += 1
+        return NOW
+
+    monkeypatch.setattr(server, "_now", counted_now)
+    response = request(
+        "POST",
+        "/command",
+        headers={"X-Threshold-Grant-Token": GRANT_VALUE},
+        json={"grant": "g-neo", "verb": "navigate", "zone": "kitchen"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["reason"] == "adapter_not_configured"
+    assert calls == 1
+    assert server.LEDGER.read()[0]["ts"] == timestamp(NOW)
+
+
 def test_command_parameters_are_denied_until_verb_schemas_exist():
     response = request(
         "POST",
@@ -450,8 +661,7 @@ def test_revoke_is_owner_authenticated_idempotent_and_durably_logged_once():
 
 
 def test_suspended_grant_can_be_explicitly_revoked():
-    suspended = server.MGR.grants["g-neo"]
-    suspended.status = GrantStatus.SUSPENDED
+    assert server.AUTHORITY.suspend_all(now=NOW) == 1
     response = request(
         "POST",
         "/grants/g-neo/revoke",
@@ -460,24 +670,24 @@ def test_suspended_grant_can_be_explicitly_revoked():
     assert response.status_code == 200
     assert response.json()["changed"] is True
     assert response.json()["grant"]["status"] == "revoked"
-    assert suspended.status == GrantStatus.REVOKED
+    assert server.AUTHORITY.grants["g-neo"].status == GrantStatus.REVOKED
 
 
-def test_suspended_revoke_rolls_back_when_ledger_write_fails(monkeypatch):
-    class FailingLedger:
-        def record_event(self, *_args, **_kwargs):
-            raise OSError("synthetic write failure")
+def test_suspended_revoke_remains_restrictive_when_ledger_write_fails(monkeypatch):
+    assert server.AUTHORITY.suspend_all(now=NOW) == 1
 
-    suspended = server.MGR.grants["g-neo"]
-    suspended.status = GrantStatus.SUSPENDED
-    monkeypatch.setattr(server, "LEDGER", FailingLedger())
+    def fail_append(_prepared):
+        raise OSError("synthetic write failure")
+
+    monkeypatch.setattr(server.AUTHORITY.ledger, "append_prepared", fail_append)
     response = request(
         "POST",
         "/grants/g-neo/revoke",
         headers={"X-Threshold-Owner-Token": OWNER_VALUE},
     )
     assert response.status_code == 503
-    assert suspended.status == GrantStatus.SUSPENDED
+    reloaded = GrantMetadataStore(server.SETTINGS.grant_store_path).load()
+    assert reloaded["g-neo"].status == GrantStatus.REVOKED
 
 
 def test_owner_can_read_bounded_persisted_events_without_credentials():
@@ -544,7 +754,7 @@ def test_policy_clock_is_captured_inside_the_grant_lock(monkeypatch):
     assert response.status_code == 200
 
 
-def test_ledger_write_failure_prevents_disclosure_and_rolls_back_issue(monkeypatch):
+def test_ledger_write_failure_prevents_disclosure_and_aborts_pending_issue(monkeypatch):
     class FailingLedger:
         def record_event(self, *_args, **_kwargs):
             raise OSError("private path and payload must not escape")
@@ -553,6 +763,11 @@ def test_ledger_write_failure_prevents_disclosure_and_rolls_back_issue(monkeypat
             return []
 
     monkeypatch.setattr(server, "LEDGER", FailingLedger())
+
+    def fail_prepared(_prepared):
+        raise OSError("synthetic write failure")
+
+    monkeypatch.setattr(server.AUTHORITY.ledger, "append_prepared", fail_prepared)
     read = request(
         "GET",
         "/housefile",
