@@ -11,9 +11,11 @@ capabilities granted to a caller, refuses no-go actions, and records access deci
 > decision ledger, synthetic mock-agent proof run, privacy-first local capture intake, and
 > a guarded GPT-5.6 observation-proposal adapter. A simulated, process-local stop-interlock,
 > deterministic terminal states, and a synthetic PNG receipt fallback are implemented with
-> software-path tests. Live model quality has not been evaluated, and boundaries, canonical
-> proposal materialization, robot adapters, owner console, ESP32/NC-loop input, OLED/printer
-> output, and physical stopping are not implemented.
+> software-path tests. Deterministic digest-bound geometry and a separate synthetic-only,
+> owner-reviewed housefile materializer are implemented as local library boundaries. Live
+> model quality has not been evaluated, and real-dwelling materialization, live canonical
+> loading, robot adapters, owner console, ESP32/NC-loop input, OLED/printer output, and
+> physical stopping are not implemented.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -35,7 +37,7 @@ stay in ignored local storage.
   and start-inclusive/end-exclusive access windows.
 - An authoritative, revisioned private grant envelope: complete grant metadata persists
   across restart, while raw bearer credentials never do. Issue, revoke, observed expiry,
-  and the future suspend transition use one ledger-witnessed recovery protocol.
+  and the suspend transition use one ledger-witnessed recovery protocol.
 - Pending issues are never usable before their exact durable ledger receipt. Pending
   restrictive transitions remain denied; corrupt, missing-with-history, or ambiguous
   authority state makes grant operations fail closed with `503` rather than loading seeds.
@@ -67,6 +69,16 @@ stay in ignored local storage.
 - An explicit-consent OpenAI Responses API adapter that sends only verified normalized
   frames, requires strict structured output, revalidates it locally, and records a
   digest-bound owner decision without creating policy or writing the housefile.
+- A deterministic rectangular geometry proposal built only from explicit room order and
+  exact proposal digests. It is a fixed sketch—not model, survey, or spatial inference—and
+  contains no access, no-go, outdoor, grant, or command policy.
+- A separate synthetic-only materializer that requires the exact geometry and per-zone
+  proposal digests, explicit owner-reviewed names/access/outdoor choices, and the expected
+  housefile revision. It validates THS-0.1, increments the revision under a private POSIX
+  lock, and atomically replaces one local canonical fixture with rollback on a failed
+  directory sync. Its receipt contains no room names or policy values.
+  The synthetic markers are a fail-closed workflow gate, not proof that arbitrary supplied
+  content is fictional.
 - Simulator-first fixtures and a sanitized public-release scanner that rejects tracked
   runtime data, including capture and receipt artifacts, even if force-added to Git.
 
@@ -85,8 +97,9 @@ is:
 
 The model adapter and provider-free contract tests are implemented. A live synthetic
 GPT-5.6 quality/cost evaluation is still required before calling the extraction flow
-demo-proven. The current simulated appliance proof does not change that warning or prove
-any physical hardware behavior.
+demo-proven. The geometry/materialization proof uses only unmistakably synthetic temporary
+fixtures, does not make model-quality claims, and is not wired into the live API. The
+simulated appliance proof likewise proves no physical hardware behavior.
 See [`docs/BUILD-WEEK.md`](docs/BUILD-WEEK.md).
 
 ## Quickstart (synthetic demo only)
@@ -253,6 +266,38 @@ does not produce boundaries, assign access, or write the canonical housefile. Pr
 decision, and runtime receipt files remain private even when their output shape is
 sanitized.
 
+### Synthetic geometry and reviewed materialization
+
+THS-0022 and THS-0023 are deliberately separate local library boundaries. Geometry takes
+an explicit ordered list of room bindings and produces fixed 400×300 rectangles in an
+eight-column strip/grid. Every room binds a proposal SHA-256 and locally assigned candidate
+ID; reordering or changing a binding changes the geometry digest. The algorithm does not
+read pixels, infer dimensions, choose policy, or open a proposal/decision artifact. The
+caller remains responsible for selecting the caller-asserted confirmed private proposal
+digests; the geometry module does not verify that confirmation.
+
+Materialization accepts only canonical geometry bytes plus an exact review record. The
+review must be marked owner-reviewed and synthetic, cover every geometry room in order,
+repeat each proposal digest exactly, explicitly name each zone, choose its
+`open|restricted|no-go` access, choose `outdoor` true or false, and match the current
+housefile revision. The canonical target must be an unmistakably synthetic fixture in a
+private local directory. A stale revision, changed digest, unsafe path, invalid schema, or
+ambiguous file state fails without a successful write.
+
+The focused end-to-end proof is local and synthetic:
+
+```bash
+.venv/bin/python -m pytest -q tests/integration/test_geometry_materialization.py
+```
+
+This is a materialization primitive, not an automatic pipeline. The vision `confirm`
+command still cannot write a housefile. A target without the required explicit synthetic
+markers is rejected, but those declarative markers cannot prove supplied content is
+fictional; using real dwelling data remains prohibited. The FastAPI server still serves its
+in-code synthetic seed rather than loading this canonical file. Digest binding detects
+mismatches; it is not tamper evidence. Geometry bytes, review records, receipts, digests,
+and resulting runtime housefiles remain private.
+
 ## Validation
 
 ```bash
@@ -280,7 +325,7 @@ proved.
 
 ```text
 docs/          architecture, specs, privacy, demo, and Build Week plan
-schema/        canonical THS-0.1 and private vision-proposal JSON Schemas
+schema/        canonical THS-0.1, private vision-proposal, and geometry JSON Schemas
 src/threshold/ policy core, grants, API, adapters, hardware, and capture modules
 tests/         unit/API/security tests
 scripts/       mock robot and public-release scan

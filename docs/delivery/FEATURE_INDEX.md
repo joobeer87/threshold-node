@@ -20,11 +20,14 @@
 | THS-F016 | Simulated latched interlock | Owner-authenticated demo-only trip/re-arm, latch-first denial, durable ESTOP/suspension, idempotence, and isolated adapter attempts | Runnable simulated software path only; no physical stop proof |
 | THS-F017 | Deterministic simulated terminal display | Pure ARMED count, two-second READ, four-second DENY, and latched TRIPPED state rendering | Runnable terminal simulation only; no OLED/device proof |
 | THS-F018 | Synthetic receipt/PNG fallback | Allowlisted GRANT/DENY/ESTOP text, deterministic fixed-bitmap PNG, and optional private write-once sink | Runnable synthetic-only primitive; no printer/device proof |
+| THS-F019 | Deterministic digest-bound rectangular geometry | Explicit ordered proposal bindings → canonical fixed 8-column 400×300 strip/grid + digest; no persistence or policy fields | Runnable provider-free synthetic sketch only; no model/spatial/survey/policy inference |
+| THS-F020 | Owner-reviewed synthetic housefile materialization | Exact geometry/proposal bindings, explicit reviewed name/access/outdoor choices, strict THS validation, local revision CAS, and rollback-capable atomic replace | Runnable synthetic temporary-fixture primitive; no authentication, live API, real, or automatic materialization |
 
-Wave 5 adds THS-F016 through THS-F018 and also impacts THS-F004, THS-F005, THS-F011,
-and THS-F014. THS-0051 is integration proof across existing features, not a separate
-feature. Its timing evidence is limited to the simulated software path; it does not prove a
-physical stop, physical latency, device halt, or hardware certification. PR #3 merged the
-provider-free THS-0021 path, but a live synthetic GPT-5.6 quality/cost/latency evaluation is
-still not run. THS-0022 geometry and THS-0023 owner-reviewed materialization are also still
-required.
+Wave 6 adds THS-F019 and THS-F020 as standalone caller-supplied digest boundaries. Geometry
+does not load or authenticate THS-F006 proposal/decision artifacts, make a model call, or
+infer a floor plan. Materialization consumes a separate exact declarative review and writes
+only a local fixture carrying the required synthetic markers; it is not invoked by proposal
+confirmation or the running API. Those markers do not prove arbitrary content is fictional,
+and digests are change bindings, not tamper evidence. A live synthetic GPT-5.6
+quality/cost/latency evaluation, real-dwelling workflow, and owner-console integration are
+still not run.

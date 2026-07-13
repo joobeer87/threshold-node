@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://threshold.local/schema/ths-geometry-proposal-0.1.json",
+  "title": "Threshold deterministic geometry proposal 0.1",
+  "$comment": "Runtime parse_geometry also requires exact canonical JSON, its caller-supplied SHA-256 digest, and Python-printable Unicode names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "algorithm",
+    "rooms",
+    "canonical_housefile_written"
+  ],
+  "properties": {
+    "schema": {"const": "ths/geometry-proposal/0.1"},
+    "algorithm": {"const": "ths/rectangular-strip-grid/0.1"},
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "$comment": "Per-item order-to-boundary mapping is schema-enforced. parse_geometry additionally requires array-index-contiguous order and unique zone_id and proposal_sha256 values.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "zone_id",
+          "suggested_name",
+          "proposal_sha256",
+          "zone_candidate_id",
+          "boundary"
+        ],
+        "properties": {
+          "order": {"type": "integer", "minimum": 0, "maximum": 63},
+          "zone_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          },
+          "suggested_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^(?!\\s)(?!.*\\s$)[^\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]+$"
+          },
+          "proposal_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "zone_candidate_id": {"const": "zone-candidate-001"},
+          "boundary": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "prefixItems": [
+              {"type": "integer", "minimum": 0, "maximum": 2800},
+              {"type": "integer", "minimum": 0, "maximum": 2100},
+              {"const": 400},
+              {"const": 300}
+            ],
+            "items": false
+          }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"order": {"enum": [0, 8, 16, 24, 32, 40, 48, 56]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 0}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [1, 9, 17, 25, 33, 41, 49, 57]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 400}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [2, 10, 18, 26, 34, 42, 50, 58]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 800}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [3, 11, 19, 27, 35, 43, 51, 59]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 1200}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [4, 12, 20, 28, 36, 44, 52, 60]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 1600}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [5, 13, 21, 29, 37, 45, 53, 61]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 2000}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [6, 14, 22, 30, 38, 46, 54, 62]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 2400}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"enum": [7, 15, 23, 31, 39, 47, 55, 63]}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{"const": 2800}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 0, "maximum": 7}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 0}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 8, "maximum": 15}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 300}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 16, "maximum": 23}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 600}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 24, "maximum": 31}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 900}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 32, "maximum": 39}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 1200}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 40, "maximum": 47}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 1500}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 48, "maximum": 55}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 1800}]}}}
+          },
+          {
+            "if": {"properties": {"order": {"minimum": 56, "maximum": 63}}},
+            "then": {"properties": {"boundary": {"prefixItems": [{}, {"const": 2100}]}}}
+          }
+        ]
+      }
+    },
+    "canonical_housefile_written": {"const": false}
+  }
+}

@@ -1,18 +1,26 @@
 # SPEC — THS-0.1 · the housefile
 
-Status: DRAFT-A (frozen for build week) · Owner: The Architect.
+Status: DRAFT-B (active build-week revision) · Owner: The Architect.
 
 ## 1. Object model
-`Housefile { schema:"ths/0.1", dwelling, zones[], systems[], inventory[], quirks[], policies, rev }`
+`Housefile { schema:"ths/0.1", dwelling, zones[], systems[]?, inventory[]?, quirks[]?, policies, rev, fixture?, materialization? }`
 
 - **Zone** `{id, name, access: open|restricted|no-go, boundary:[x,y,w,h] (dwelling frame), note?, outdoor?:bool}`
   - `outdoor:true` zones map to mower work-areas / stay-out zones (INTEGRATIONS §2).
 - **SystemItem** `{id, name, zone, tag: water|power|hvac|net, detail}`
 - **InventoryItem** `{id, name, zone, flags[], note?}` — reserved flags: `fragile`, `do-not-touch`, `high-value`.
 - **Quirk** `{id, zone, text}` — tribal knowledge, transmitted with layout scope.
-- **Policies** `{quietHours{start,end,timezone}, teleop:"per-session"|"never", residency:"local-first"}`
+- **Policies** `{quietHours{start,end,timezone}, teleop?:"per-session"|"never", residency?:"local-first"}`
   - `start` and `end` use zero-padded `HH:MM`; `timezone` is an explicit IANA timezone
     identifier resolved by the node through `zoneinfo.ZoneInfo`.
+- **Fixture marker** (optional in general THS; required by the current materializer)
+  `{synthetic:true, notice}`. It is a declarative workflow marker, not proof that supplied
+  content is fictional.
+- **Materialization provenance** (optional)
+  `{schema:"ths/materialization-provenance/0.1", geometry_sha256,
+  algorithm:"ths/rectangular-strip-grid/0.1",
+  zones:[{order,zone_id,proposal_sha256}]}`. It contains bindings, not owner authentication
+  or tamper evidence.
 
 ## 2. Grants
 `Grant {id, name, kind: humanoid|agent|human, scopes[], zones[], window, expires, status: active|revoked|expired|suspended, issued}`
@@ -129,3 +137,48 @@ proposal digest and is terminal: one confirm or reject record. “Confirmed” m
 owner-approved proposal only. It does not create geometry, change a revision, mutate
 grants, or write the canonical housefile. Hash binding detects later changes but is not
 tamper evidence against an attacker who controls the local filesystem.
+
+## 8. Deterministic geometry proposal
+
+`ths/geometry-proposal/0.1` is a local deterministic artifact between caller-asserted
+confirmed observation-proposal digests and reviewed materialization. Its algorithm identifier is
+`ths/rectangular-strip-grid/0.1`. The caller supplies an explicit ordered list of at most
+64 room bindings: zone ID, suggested name, exact proposal SHA-256, and the locally assigned
+zone-candidate ID. Suggested names are trimmed printable Unicode, 1–80 characters. For order
+index `i`, the only boundary is
+`[(i % 8) * 400, (i // 8) * 300, 400, 300]`.
+
+The canonical JSON and its SHA-256 bind the complete order, names, candidate IDs, proposal
+digests, and rectangles. Parsing requires exact canonical bytes and the expected geometry
+digest. The artifact has no access, no-go, restricted, outdoor, grant, command, policy,
+enforcement, owner-choice, or canonical-path field and always records
+`canonical_housefile_written:false`. The rectangles are a fixed synthetic sketch, not
+pixel-derived, observed, measured, surveyed, or model-inferred geometry. The caller is
+responsible for supplying caller-asserted confirmed private proposal bindings; the geometry module does
+not authenticate a proposal or decision artifact.
+
+## 9. Owner-reviewed synthetic materialization
+
+`ths/materialization-review/0.1` is a separate complete review record. It MUST declare
+`owner_reviewed:true` and `synthetic_fixture:true`, bind the exact geometry SHA-256 and
+expected current housefile revision, and contain one ordered choice for every geometry
+room. Each choice repeats the order, zone ID, and exact proposal SHA-256 and explicitly
+supplies the owner-reviewed name, `open|restricted|no-go` access, and boolean `outdoor`
+value. Suggested model names and outdoor hints are never silently treated as policy.
+
+The materializer MUST strictly parse the existing housefile, geometry, and review; reject
+unknown, duplicate, non-finite, missing, reordered, or mismatched data; require the existing
+and reviewed documents to be unmistakably synthetic; validate the complete proposed
+THS-0.1 document; and increment the revision exactly once. Revision comparison and the
+write occur while holding one stable private POSIX lock. Revisions are an uppercase
+alphabetic counter from `A` through at most eight characters (`Z` advances to `AA`);
+overflow fails closed. A stale revision, unsafe file,
+schema error, lock failure, replace failure, or directory-sync failure returns no success
+receipt and preserves or restores the prior canonical bytes.
+
+This is a one-filesystem compare-and-swap for synthetic temporary fixtures, not a
+distributed transaction, crash-proof database, real-dwelling authorization, or automatic
+pipeline. A bounded successful receipt may contain revisions, counts, and digests but no
+zone names or access choices. Digests bind changes; they do not authenticate an owner or
+make the files tamper-evident. Vision confirmation still writes only a private decision,
+and the running API does not load the materialized file.

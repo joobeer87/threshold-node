@@ -5,9 +5,11 @@ authenticated API, revisioned private grant authority, local append-only JSONL l
 explicit first-boot synthetic seed, IANA quiet-hours command gate, mock-agent client, and
 local capture normalization are implemented. The capture wave's local unit, privacy,
 scanner, and synthetic FFmpeg proofs pass. The GPT-5.6 proposal adapter, strict validator,
-and local owner-decision record are implemented with provider-free tests; live model
-evaluation, geometry, canonical materialization, adapters, console, and physical hardware
-remain incomplete. The simulated appliance adds a process-local latched stop coordinator,
+and local owner-decision record are implemented with provider-free tests. Deterministic
+digest-bound geometry and a separate synthetic-only reviewed materializer are implemented
+as standalone local boundaries; they are not the source used by the running API. Live model
+evaluation, real-dwelling materialization, adapters, console, and physical hardware remain
+incomplete. The simulated appliance adds a process-local latched stop coordinator,
 deterministic terminal frames, and a synthetic PNG receipt fallback; it proves only the
 software path.
 
@@ -21,8 +23,15 @@ software path.
                                       └────────► private proposal ──► owner decision artifact
                                                      │                       │
                                                      └─ no direct write ──────┘
-
- future THS-0022 geometry + reviewed materialization ─────────► housefile/store
+                                                               │ explicit ordered binding
+                                                               ▼
+                       deterministic geometry bytes + digest (no policy/write)
+                                                               │ explicit owner review
+                                                               ▼
+                  strict validate + revision CAS + atomic synthetic housefile
+                                                               │ standalone; not live API
+                                                               ▼
+                                                        housefile/store
                                                                      │
                                                         housefile/scoped_view (PURE)
                                                                      ▲
@@ -123,13 +132,32 @@ The proposal file binds the batch, manifest, ordered frame hashes, prompt versio
 and validator version. A separate owner-authenticated command records exactly one
 digest-bound confirm/reject artifact. Neither path imports `housefile/store.py`. Content
 hashes detect later changes but are not tamper evidence against an attacker controlling the
-local filesystem. THS-0022 still owns geometry before any future canonical materialization.
+local filesystem. Proposal confirmation still has no geometry or canonical-write
+capability.
+
+The implemented THS-0022 geometry boundary consumes an explicit ordered list of proposal
+bindings and maps it through one fixed eight-column 400×300 strip/grid algorithm. It emits
+canonical bytes plus a digest, records `canonical_housefile_written:false`, and has no
+persistence, model, spatial/survey inference, access, outdoor, grant, or command input.
+It does not open or authenticate a proposal/decision artifact; the caller supplies the
+locally confirmed private digest binding.
+
+THS-0023 is a separate synthetic-only write boundary. Its exact review repeats the geometry
+and per-zone proposal digests and explicitly supplies every reviewed zone name, access, and
+outdoor value plus the expected housefile revision. Strict validation and compare-and-swap
+run under one private POSIX lock before an atomic replace and directory sync; failed final
+sync restores the prior bytes. This atomicity is local to one filesystem and target, not a
+distributed transaction or crash-proof database. The resulting file is not loaded by the
+server, which still serves its in-code synthetic seed. Runtime geometry, reviews, receipts,
+digests, and generated housefiles remain private.
 
 The current descriptor-passing boundary is Linux-specific: inputs are opened with
 `O_NOFOLLOW`, revalidated, and exposed to local tools through `/proc/self/fd`. Sources
 inside the repository are refused unless they are under the ignored `media/raw/` boundary.
 
-Import DAG: core ← housefile ← grants ← adapters ← api. Event-bus handlers are isolated,
+Relevant import edges: core ← housefile ← grants ← adapters ← api, plus
+capture.geometry ← housefile.materialize. The new edge is one-way and does not connect the
+vision provider or owner-decision CLI to the writer. Event-bus handlers are isolated,
 but the bus is not the durability boundary: the authority commits the ledger synchronously
 and only then notifies in-process observers. The ledger contains allowlisted events plus
 paired transaction/revision metadata; the separate private envelope persists grant

@@ -24,6 +24,9 @@ real household. The public repository therefore ships only fictional data.
   still household data.
 - Vision proposals, owner decisions, model response identifiers, batch/proposal hashes,
   and every real-run provider receipt stored beside a private capture batch.
+- Geometry bytes and digests, materialization review records and receipts, and generated
+  runtime housefiles. A digest can still fingerprint a private layout even when names are
+  absent.
 - Raw, review, and exported real-room media files; publish the approved video externally.
 - Matter fabrics, Home Assistant tokens, device IDs, OAuth material, network captures,
   local paths, receipts, and ledger bodies.
@@ -84,12 +87,18 @@ against an attacker who controls the local filesystem. Deterministic policy—no
 model—decides disclosure and command authorization.
 
 THS-0021's provider adapter and provider-free validation are implemented, but no reviewed
-live synthetic GPT-5.6 run yet proves response quality, latency, token use, or cost. A future
-THS-0022 geometry proposal remains deterministic and digest-bound to explicit room order;
-it cannot infer access, no-go, or outdoor policy. THS-0023 is a separate owner-reviewed
-materialization step that must bind exact proposal and geometry digests, require explicit
-access/outdoor choices and the expected housefile revision, validate the schema, and commit
-atomically. It must never apply a real dwelling proposal automatically.
+live synthetic GPT-5.6 run yet proves response quality, latency, token use, or cost.
+THS-0022 geometry is implemented as a fixed deterministic strip/grid bound to explicit room
+order and proposal digests; it cannot infer dimensions, access, no-go, or outdoor policy.
+THS-0023 is a separate synthetic-only materializer that binds exact proposal and geometry
+digests, requires explicit owner-reviewed names/access/outdoor choices and the expected
+housefile revision, validates the schema, and performs a local locked compare-and-swap.
+
+These runtime artifacts all remain private. The `owner_reviewed:true` and
+`synthetic_fixture:true` markers are workflow gates, not authentication or proof that
+arbitrary input is fictional. The current materializer refuses nonsynthetic targets and
+is not called by proposal confirmation or the API. It must never apply a real dwelling
+proposal automatically. Digest binding detects mismatch but is not tamper evidence.
 
 ## Receipt boundary
 
