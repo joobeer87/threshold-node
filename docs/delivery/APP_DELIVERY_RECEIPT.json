@@ -1,42 +1,43 @@
 {
   "schema_version": "1.0",
-  "task": "waves_1_2_grants_ledger_mock_agent",
-  "authority": "L2_local_plus_user_authorized_branch_push_and_draft_pr",
-  "delivery_gate": "pass_local_scoped_wave",
+  "task": "wave_3_ths_0020_privacy_first_capture_intake",
+  "authority": "L2_local_plus_user_authorized_feature_branch_push_and_draft_pr",
+  "delivery_gate": "pass_feature_branch_draft_pr",
   "impacted_features": [
-    "THS-F002",
-    "THS-F003",
-    "THS-F005",
-    "THS-F011",
-    "THS-F012"
+    "THS-F004",
+    "THS-F010",
+    "THS-F013"
   ],
   "proof": {
-    "automated_tests": "pass_109",
+    "capture_focused_tests": "pass_49",
+    "real_ffmpeg_smoke": "pass_synthetic_jpeg_png_mp4_only",
     "compile_check": "pass",
-    "loopback_mock_proof": "pass_scoped_200_allowed_unrelayed_503_no_go_403",
-    "public_tree_scan": "pass_0_findings_69_candidate_files",
-    "independent_secret_audit": "pass_0_history_patterns_0_forbidden_tracked_paths",
-    "hosted_ci": "pass_run_5_python_3_10_and_3_12_commit_3ae4894"
+    "automated_suite": "pass_151",
+    "public_tree_scan": "pass_0_findings_71_candidate_files",
+    "prior_waves_baseline": "pass_109_before_wave_3",
+    "hosted_ci": "pass_pr_2_python_3_10_and_3_12"
   },
   "docs_impact": "docs/delivery/DOCS_IMPACT_MATRIX.md",
   "feature_index": "docs/delivery/FEATURE_INDEX.md",
   "qa_matrix": "docs/delivery/QA_MATRIX.md",
   "human_leverage": {
     "status": "pass",
-    "summary": "One command now proves scoped disclosure, an allowed but unrelayed request, and a no-go refusal without exposing raw payloads or credentials."
+    "summary": "One bounded command prepares a private room batch without a model call or canonical write; validation is automated so real footage never needs to enter the repository."
   },
   "blocked_claims": [
     "persistent grant metadata across restart",
     "robot command relay or device motion",
     "device-native adapter enforcement",
     "tamper-evident ledger",
-    "GPT-5.6 capture integration",
+    "GPT-5.6 extraction or any provider call",
+    "owner confirmation and canonical housefile update from capture",
+    "real-footage validation or publication approval",
     "live owner console",
     "hardware stop behavior or measured stop latency",
     "certified safety behavior",
     "merge, deployment, or full submission readiness"
   ],
-  "hosted_mutation_scope": "user-authorized feature-branch push and draft pull request only",
+  "hosted_mutation_scope": "feature_branch_push_and_draft_pr_only",
   "secret_material_returned": false,
   "hosted_or_provider_mutation": true,
   "merge_or_deploy_performed": false

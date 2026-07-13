@@ -7,9 +7,10 @@ keeps a machine-readable *housefile* under the owner's control, returns only the
 capabilities granted to a caller, refuses no-go actions, and records access decisions.
 
 > Pre-alpha scaffold: the scoped-view policy core, authenticated grant lifecycle API,
-> time-policy enforcement, durable local decision ledger, and synthetic mock-agent proof
-> run. Grant metadata still resets on restart; robot adapters, capture, owner console, and
-> hardware interlock are not implemented. This is not a life-safety system.
+> time-policy enforcement, durable local decision ledger, synthetic mock-agent proof run,
+> and privacy-first local capture intake. Grant metadata still resets on restart; vision
+> extraction, robot adapters, owner console, and hardware interlock are not implemented.
+> This is not a life-safety system.
 
 ## Why this exists
 
@@ -35,7 +36,10 @@ stay in ignored local storage.
   verb-specific schemas exist, and never claims a stub adapter relayed an action.
 - An exit-coded mock agent that proves scoped read → policy-allowed but not relayed →
   no-go denial without printing the housefile or credentials.
-- Simulator-first fixtures and a sanitized public-release scanner.
+- A bounded, local-only intake that normalizes one room's JPEG/PNG photos or MOV/MP4/M4V
+  video into private JPEG frames without calling a model or changing the housefile.
+- Simulator-first fixtures and a sanitized public-release scanner that rejects capture
+  artifacts even if they are force-added to Git.
 
 ## Framework
 
@@ -113,6 +117,34 @@ reviewed.
 Owner and demo grant tokens must be different, 32–512-character visible-ASCII values.
 All `*.jsonl` files are excluded from the public tree because a custom ledger path may
 still contain private activity data.
+
+### Local capture intake
+
+Wave 3 accepts exactly one local room source per invocation: one JPEG/PNG image, one
+MOV/MP4/M4V video, or one flat directory containing only JPEG/PNG images. `ffmpeg` and
+`ffprobe` must be available on `PATH`. This hardened intake currently requires Linux with
+`/proc/self/fd` support (including the target Jetson environment). Keep the source outside
+the repository checkout, or place it under ignored `media/raw/`; any other in-repository
+source is refused. Choose a local-only room label and do not add it to committed fixtures
+or documentation.
+
+```bash
+export LOCAL_ROOM_CAPTURE=/path/to/local-room-capture
+.venv/bin/python -m threshold.capture.vision_intake \
+  --room room-01 \
+  --max-frames 8 \
+  "${LOCAL_ROOM_CAPTURE}"
+```
+
+`--max-frames` accepts 1–12. The command writes a bounded normalized JPEG batch under
+ignored `data/capture/` storage and emits one sanitized JSON receipt. The receipt contains
+counts and hashes, not the source path, original filenames, room label, or tool output.
+Capture batches and their runtime receipts can still describe or fingerprint a real home:
+keep both local and never force-add them to Git.
+
+This command performs intake only. It makes no network or model call and cannot write the
+canonical housefile. Vision extraction and owner confirmation remain separate planned
+work.
 
 ## Validation
 
