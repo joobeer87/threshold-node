@@ -47,6 +47,26 @@ invalid policy or timezone returns unavailable without relay. Do not imply that 
 quiet-hours blocked, that a command was physically stopped, or that this prototype is a
 certified safety control.
 
+The simulated-appliance wave may claim only its tested software behavior: owner-authenticated
+routes gated by explicit demo mode and exact `ESP32_SERIAL=SIMULATED`; latch-first handling;
+one durable ESTOP transition even with zero active grants; isolated adapter-call attempts;
+idempotent duplicate trip; refusal to re-arm after failed persistence; and no grant restore
+on successful re-arm. State that the latch is process-local, resets on restart, is not
+shared across workers, and should be demonstrated with one worker. Suspended grant state,
+not the latch, is the durable restart evidence.
+
+Terminal claims are limited to deterministic simulated `ARMED`, two-second `READ`,
+four-second `DENY`, and latched `TRIPPED` frames. Receipt claims are limited to allowlisted,
+deterministic synthetic text/PNG generation and an optional private write-once sink. Never
+commit a generated PNG or imply that the in-memory API fallback was printed. Every latency
+value must remain labeled `simulated_software_path_only` beside
+`physical_stop_verified:false`.
+
+Do not claim an NC loop, ESP32/serial bridge, OLED, printer, configured adapter invocation,
+device movement/stop, physical stop timing, or certified-safety result. Those remain later
+hardware/adapter proof gates. The live synthetic GPT-5.6 evaluation, deterministic geometry,
+owner-reviewed materialization, and live owner console also remain outstanding.
+
 ## After a public push
 
 1. Open the repository in a logged-out browser and inspect README, files, commit author,

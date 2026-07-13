@@ -9,8 +9,13 @@
    - `POST /grants/{id}/revoke` (owner-auth) → active/suspended grants become revoked;
      already-revoked or expired grants return unchanged
    - `GET /ledger?limit=<n>` (owner-auth) → bounded newest-first local events
+   - `POST /sim/interlock/trip` (owner-auth, explicit synthetic-demo gate) → exercise one
+     latched software stop cycle and return bounded counters/nonclaims
+   - `POST /sim/interlock/rearm` (owner-auth, explicit synthetic-demo gate) → clear only a
+     process-local latch whose durable transition succeeded; never restore grants
    - `GET /health` → truthful pre-alpha capability state; ledger and grant-store paths are
-     reported as configured, not probed
+     reported as configured, not probed; interlock state is process-local and always reports
+     `physical_stop_verified:false`
 
 Grant issue accepts `standing` or an RFC3339 `<start>/<end>` window and `revocable` or an
 RFC3339 expiry. All timestamps require offsets. Both reads and commands evaluate the same
@@ -23,8 +28,8 @@ Grant metadata is authoritative across restart in a private revisioned envelope.
 envelope contains the complete bounded grant projection and credential digests, never raw
 bearer credentials. Issue, revoke, observed expiry, and `suspend_all` transitions use the
 same ledger-witnessed commit protocol described below. The suspend primitive is present for
-the later interlock wave; this version still does not claim that an E-stop input or adapter
-halt is implemented.
+the simulated interlock path. No physical E-stop input, NC loop, ESP32 bridge, adapter halt,
+OLED, printer, or device stop is implemented or verified.
 
 The command endpoint distinguishes a policy decision from physical execution. An allowed
 request returns `503` with `policy_decision:allowed` and `relayed:false` while adapters are
@@ -42,22 +47,44 @@ appends DENY, relays nothing, and returns `503`. An invalid request clock return
 before policy evaluation because no trustworthy receipt timestamp exists. Scoped reads do
 not consult the quiet-hours gate.
 
-2. **E-stop** — NC loop (HARDWARE.md). On trip:
-   (a) all active grants → `suspended` (latency target must be measured before a claim);
-   (b) every adapter runs its native halt (RVC Pause/GoHome; Automower ParkUntilFurtherNotice);
-   (c) ESTOP ledger entry; (d) display TRIPPED (latched); (e) receipt if printer present.
-   Twist-release re-arm restores **nothing** automatically — owner re-issues from the console.
-3. **Display states**: `ARMED n·grants` → `READ <agent>` (2 s) → `DENY <agent>` (inverse, 4 s) → `TRIPPED` (latched).
-4. **Receipt** (58 mm, mono):
+2. **Simulated stop-interlock** — available only when owner authentication succeeds,
+   `THS_DEMO_MODE=true`, and `ESP32_SERIAL` is exactly `SIMULATED`.
+   - A new trip changes the in-memory state to `TRIPPED` before invoking any dependency.
+   - It commits `suspend_all` plus one durable ESTOP ledger receipt even when zero grants
+     are active, then attempts every injected adapter's `halt_all()` independently. One
+     adapter exception cannot suppress later attempts or clear the latch.
+   - Repeated calls during the same latch cycle return the first bounded report with
+     `newly_tripped:false`; they do not repeat persistence, adapter, display, or receipt work.
+   - If persistence fails, the current process still denies reads, commands, and new grant
+     issue while TRIPPED, and the server refuses re-arm. No private exception detail is
+     returned. After successful persistence, re-arm clears only the local latch and restores
+     **no** grant; suspended status survives restart.
+   - The latch is process-local and single-worker only. It is not shared across processes
+     and does not survive restart. Every elapsed value is labeled
+     `simulated_software_path_only`; `physical_stop_verified` is always false.
+3. **Simulated terminal display states**: `ARMED n GRANTS` → `READ <agent>` (2 s) →
+   `DENY <agent>` (4 s) → `TRIPPED` (latched). READ appears only after a durable READ
+   ledger append; restrictive decisions drive DENY. Text is bounded and control-safe, and
+   every rendered frame begins `THRESHOLD DISPLAY [SIMULATED]`.
+4. **Synthetic receipt primitive** (fixed 384×256 grayscale PNG fallback):
 ```
-THRESHOLD · SYNTHETIC DEMO HOUSE
-2026-07-18 14:02      #000041
-GRANT  NEO UNIT 04
-scopes: layout,inventory,nav
-zones : kitchen,living,office
-tier  : ENFORCED (matter-rvc)
--- boundary transmitted, interior withheld --
+THRESHOLD / SYNTHETIC DEMO
+2026-07-18 14:02:03Z #000041
+GRANT: SYNTHETIC UNIT 04
+SCOPES: INVENTORY,LAYOUT,NAV
+ZONES: KITCHEN,LIVING,OFFICE
+TIER: GATED
+SIMULATED SOFTWARE PATH
+NOT A SAFETY SYSTEM
 ```
+   Only GRANT, DENY, and ESTOP templates with fixed field allowlists are accepted through
+   the factory; there is no credential, digest, arbitrary detail, or raw-payload input.
+   Direct receipt construction is rejected and rendering rechecks factory integrity. PNG
+   bytes are deterministic for exact inputs. The API exercises the ESTOP fallback in memory
+   and discards it. An
+   explicit optional sink accepts only a private `0700` directory and new `0600`, single-link,
+   write-once PNG target; it rejects existing targets, symlinks, hardlinks, and public
+   directories. No printer output is implemented.
 5. **Owner console** — reference/Threshold-MVP.jsx rebuilt against the live API (P5). Same blueprint UI, synthetic demo data.
 6. **Vision proposal CLI** — `threshold.capture.openai_vision` operates only on a fixed
    private `data/capture/batch-<id>` created by THS-0020. `propose` requires the expected
@@ -80,6 +107,12 @@ transaction, and installs only a verified clean revision. Authenticated reads an
 retain the authority lease through disclosure or the command decision and durable receipt,
 so a concurrent revoke or suspension cannot overtake an allowed use.
 
+Before recovering a pending transition, the store reconstructs its exact base snapshot by
+restoring every recorded prior status and binds that snapshot to the previous clean target
+hash. The authority also verifies the previous revision's exact ledger receipt before it
+may append or finalize the pending receipt. An unrelated inserted grant or missing prior
+receipt therefore makes recovery unavailable instead of becoming part of the next revision.
+
 For a mutation, the authority prepares canonical ledger bytes against an exact ledger
 offset and tail digest, then atomically saves a pending envelope containing the base and
 target revisions, effective fail-safe grants, exact event, target digest, and receipt
@@ -101,8 +134,10 @@ durable provisioning receipt.
 Best-effort event-bus observers run only after the durable append and cannot change the
 authority outcome. The store/ledger bindings detect torn or inconsistent local state but
 are not a hash chain, tamper evidence, or protection from an attacker controlling both
-files. Adapter calls remain unimplemented, so the API reports `relayed:false` and never
-upgrades an enforcement tier.
+files. The simulated coordinator isolates an injected adapter's exception and proceeds to
+the next adapter. No adapter is configured by the server today, so this is control-flow
+proof, not evidence of an adapter command or physical stop. The command API still reports
+`relayed:false` and never upgrades an enforcement tier.
 
 Health reports the ledger as configured, not probed. Missing storage reads as an empty
 ledger; an unreadable or unsafe target returns `503` to the owner. Ledger inspection reads
@@ -117,4 +152,6 @@ private-file validation, and `fsync` work on its event loop, so slow storage can
 requests handled by that worker. This is a pre-alpha correctness path, not a throughput or
 distributed-consensus design.
 
-This prototype interlock is not a certified emergency-stop or life-safety system.
+The simulated latch is not a certified emergency-stop or life-safety system. Its software
+timing does not prove physical response time, an NC loop, an ESP32 input, an OLED or printer,
+adapter delivery, or device motion/stop.

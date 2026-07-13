@@ -152,6 +152,96 @@ def test_pending_revoke_stays_denied_and_rolls_forward(tmp_path, monkeypatch):
     assert [event["type"] for event in restarted.ledger.read()].count("REVOKE") == 1
 
 
+def test_pending_suspend_all_cannot_hide_an_active_grant(tmp_path, monkeypatch):
+    current = authority(tmp_path)
+    item = current.issue(grant(), now=NOW)
+
+    def fail_append(_prepared):
+        raise OSError("synthetic append boundary failure")
+
+    monkeypatch.setattr(current.ledger, "append_prepared", fail_append)
+    with pytest.raises(GrantAuthorityUnavailable):
+        current.suspend_all(now=NOW)
+
+    store_path, _ = paths(tmp_path)
+    document = json.loads(store_path.read_text(encoding="utf-8"))
+    document["grants"][0]["status"] = GrantStatus.ACTIVE.value
+    document["pending"]["target_grants"][0]["status"] = GrantStatus.ACTIVE.value
+    document["pending"]["previous_statuses"] = {}
+    document["pending"]["target_sha256"] = GrantMetadataStore.target_sha256(
+        {item.id: item}
+    )
+    store_path.write_text(
+        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    store_path.chmod(0o600)
+
+    with pytest.raises(GrantAuthorityUnavailable):
+        authority(tmp_path).ensure_ready(now=NOW)
+
+
+def test_pending_revoke_cannot_inject_an_unrelated_active_grant(
+    tmp_path,
+    monkeypatch,
+):
+    current = authority(tmp_path)
+    item = current.issue(grant(), now=NOW)
+
+    def fail_append(_prepared):
+        raise OSError("synthetic append boundary failure")
+
+    monkeypatch.setattr(current.ledger, "append_prepared", fail_append)
+    with pytest.raises(GrantAuthorityUnavailable):
+        current.revoke(item.id, now=NOW)
+
+    injected = grant("g-injected-active")
+    revoked = grant(status=GrantStatus.REVOKED)
+    injected_record = GrantMetadataStore._normalize_outgoing([injected])[0]
+    store_path, _ = paths(tmp_path)
+    document = json.loads(store_path.read_text(encoding="utf-8"))
+    document["grants"].append(injected_record)
+    document["pending"]["target_grants"].append(injected_record)
+    document["grants"].sort(key=lambda record: record["id"])
+    document["pending"]["target_grants"].sort(
+        key=lambda record: record["id"]
+    )
+    document["pending"]["target_sha256"] = GrantMetadataStore.target_sha256(
+        {revoked.id: revoked, injected.id: injected}
+    )
+    store_path.write_text(
+        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    store_path.chmod(0o600)
+
+    with pytest.raises(GrantAuthorityUnavailable):
+        authority(tmp_path).ensure_ready(now=NOW)
+
+
+def test_pending_recovery_verifies_the_prior_ledger_receipt(tmp_path, monkeypatch):
+    current = authority(tmp_path)
+    item = current.issue(grant(), now=NOW)
+
+    def fail_append(_prepared):
+        raise OSError("synthetic append boundary failure")
+
+    monkeypatch.setattr(current.ledger, "append_prepared", fail_append)
+    with pytest.raises(GrantAuthorityUnavailable):
+        current.revoke(item.id, now=NOW)
+
+    _, ledger_path = paths(tmp_path)
+    with ledger_path.open("r+b") as handle:
+        handle.truncate(0)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+    restarted = authority(tmp_path)
+    with pytest.raises(GrantAuthorityUnavailable):
+        restarted.ensure_ready(now=NOW)
+    assert restarted.ledger.read() == []
+
+
 def test_exact_receipt_recovers_after_final_store_failure(tmp_path, monkeypatch):
     current = authority(tmp_path)
     store = current.store
@@ -387,3 +477,33 @@ def test_authorization_lease_blocks_revoke_until_protected_use_finishes(tmp_path
     restarted = authority(tmp_path)
     restarted.ensure_ready(now=NOW)
     assert restarted.grants[item.id].status == GrantStatus.REVOKED
+
+
+def test_zero_active_trip_still_has_one_durable_estop_receipt(tmp_path):
+    current = authority(tmp_path)
+
+    assert current.suspend_all(now=NOW) == 0
+
+    restarted = authority(tmp_path)
+    restarted.ensure_ready(now=NOW)
+    assert restarted.revision == 1
+    assert restarted.grants == {}
+    assert [event["type"] for event in restarted.ledger.read()] == ["ESTOP"]
+
+
+def test_pending_zero_active_trip_recovers_one_estop_receipt(tmp_path, monkeypatch):
+    current = authority(tmp_path)
+
+    def fail_append(_prepared):
+        raise OSError("synthetic zero-grant append failure")
+
+    monkeypatch.setattr(current.ledger, "append_prepared", fail_append)
+    with pytest.raises(GrantAuthorityUnavailable):
+        current.suspend_all(now=NOW)
+
+    assert GrantMetadataStore(paths(tmp_path)[0]).load() == {}
+    restarted = authority(tmp_path)
+    restarted.ensure_ready(now=NOW)
+    assert restarted.revision == 1
+    assert restarted.grants == {}
+    assert [event["type"] for event in restarted.ledger.read()] == ["ESTOP"]

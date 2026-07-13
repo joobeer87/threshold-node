@@ -19,6 +19,8 @@ from threshold.core.ledger import JsonlLedger
 from threshold.core.types import EventType, Grant, GrantStatus, Scope
 from threshold.grants.authority import GrantAuthority
 from threshold.grants.store import GrantMetadataStore
+from threshold.hardware.display import DisplayMode, DisplayState
+from threshold.hardware.estop import InterlockState
 
 
 OWNER_VALUE = "owner-local-test-value-000000000001"
@@ -90,6 +92,9 @@ def configured_server(monkeypatch, tmp_path):
     monkeypatch.setattr(server, "LEDGER", ledger)
     monkeypatch.setattr(server, "_now", lambda: NOW)
     monkeypatch.setattr(server, "_new_grant_id", lambda: "g-issued-test")
+    monkeypatch.setattr(server, "ADAPTERS", ())
+    monkeypatch.setattr(server, "DISPLAY_STATE", DisplayState())
+    monkeypatch.setattr(server, "INTERLOCK", server._build_simulated_interlock())
 
 
 def persist_grant(grant: Grant, *, issued_at: datetime) -> Grant:
@@ -101,7 +106,10 @@ def test_health_and_aurora_signature_remain_truthful():
     health = request("GET", "/health")
     assert health.status_code == 200
     assert health.json()["armed"] is False
-    assert health.json()["interlock"] == "not_implemented"
+    assert health.json()["interlock"] == "simulated_latched"
+    assert health.json()["interlock_state"] == "ARMED"
+    assert health.json()["physical_stop_verified"] is False
+    assert health.json()["timing_scope"] == "simulated_software_path_only"
     assert health.json()["ledger"] == "persistent_jsonl_configured"
     assert health.json()["ledger_availability"] == "not_probed"
     assert health.json()["adapters"] == []
@@ -784,6 +792,218 @@ def test_ledger_write_failure_prevents_disclosure_and_aborts_pending_issue(monke
     assert "private path" not in read.text + issue.text
 
 
+def test_simulated_trip_is_owner_authenticated_durable_and_idempotent():
+    unauthorized = request("POST", "/sim/interlock/trip")
+    assert unauthorized.status_code == 401
+
+    headers = {"X-Threshold-Owner-Token": OWNER_VALUE}
+    first = request("POST", "/sim/interlock/trip", headers=headers)
+    repeated = request("POST", "/sim/interlock/trip", headers=headers)
+
+    assert first.status_code == 200
+    assert first.json()["state"] == "TRIPPED"
+    assert first.json()["newly_tripped"] is True
+    assert first.json()["persistence_succeeded"] is True
+    assert first.json()["suspended_grants"] == 1
+    assert first.json()["adapter_call_attempts"] == 0
+    assert first.json()["adapter_call_completions"] == 0
+    assert first.json()["adapter_call_failures"] == 0
+    assert first.json()["simulated_display_updated"] is True
+    assert first.json()["synthetic_receipt_rendered"] is True
+    assert first.json()["timing_scope"] == "simulated_software_path_only"
+    assert first.json()["physical_stop_verified"] is False
+    assert repeated.status_code == 200
+    assert repeated.json()["newly_tripped"] is False
+    assert repeated.json()["suspended_grants"] == 1
+    assert server.AUTHORITY.grants["g-neo"].status == GrantStatus.SUSPENDED
+    assert server.INTERLOCK.state == InterlockState.TRIPPED
+    assert server.DISPLAY_STATE.frame(active_grants=0, now=NOW).mode == DisplayMode.TRIPPED
+    assert [event["type"] for event in server.LEDGER.read()].count("ESTOP") == 1
+
+    health = request("GET", "/health")
+    assert health.json()["armed"] is False
+    assert health.json()["interlock_state"] == "TRIPPED"
+
+
+def test_simulated_zero_grant_trip_still_commits_estop():
+    server.AUTHORITY.revoke("g-neo", now=NOW)
+
+    response = request(
+        "POST",
+        "/sim/interlock/trip",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["suspended_grants"] == 0
+    assert response.json()["persistence_succeeded"] is True
+    assert [event["type"] for event in server.LEDGER.read()].count("ESTOP") == 1
+
+
+def test_rearm_clears_only_the_local_latch_and_never_restores_grants():
+    headers = {"X-Threshold-Owner-Token": OWNER_VALUE}
+    assert request("POST", "/sim/interlock/trip", headers=headers).status_code == 200
+
+    response = request("POST", "/sim/interlock/rearm", headers=headers)
+    read = request(
+        "GET",
+        "/housefile",
+        params={"grant": "g-neo"},
+        headers={"X-Threshold-Grant-Token": GRANT_VALUE},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "state": "ARMED",
+        "changed": True,
+        "grants_restored": False,
+        "timing_scope": "simulated_software_path_only",
+        "physical_stop_verified": False,
+    }
+    assert server.INTERLOCK.state == InterlockState.ARMED
+    assert server.AUTHORITY.grants["g-neo"].status == GrantStatus.SUSPENDED
+    assert read.status_code == 403
+    assert read.json()["detail"]["reason"] == "grant_suspended"
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        Settings(
+            owner_token=OWNER_VALUE,
+            demo_grant_token=GRANT_VALUE,
+            demo_mode=False,
+            esp32_serial="SIMULATED",
+        ),
+        Settings(
+            owner_token=OWNER_VALUE,
+            demo_grant_token=GRANT_VALUE,
+            demo_mode=True,
+            esp32_serial="synthetic-device",
+        ),
+    ],
+)
+def test_simulated_routes_require_demo_mode_and_exact_simulated_serial(
+    monkeypatch,
+    settings,
+):
+    monkeypatch.setattr(server, "SETTINGS", settings)
+    response = request(
+        "POST",
+        "/sim/interlock/trip",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+    assert response.status_code == 503
+    assert response.json() == {"detail": "simulated appliance is not enabled"}
+    assert server.INTERLOCK.state == InterlockState.ARMED
+
+
+def test_failed_trip_stays_latched_denies_use_and_cannot_rearm(monkeypatch):
+    private_sentinel = "synthetic-private-trip-failure"
+
+    def fail_suspend(*, now):
+        del now
+        raise OSError(private_sentinel)
+
+    monkeypatch.setattr(server.AUTHORITY, "suspend_all", fail_suspend)
+    owner = {"X-Threshold-Owner-Token": OWNER_VALUE}
+    trip = request("POST", "/sim/interlock/trip", headers=owner)
+    read = request(
+        "GET",
+        "/housefile",
+        params={"grant": "g-neo"},
+        headers={"X-Threshold-Grant-Token": GRANT_VALUE},
+    )
+    issue = request("POST", "/grants", headers=owner_headers(), json=issue_payload())
+    rearm = request("POST", "/sim/interlock/rearm", headers=owner)
+
+    assert trip.status_code == 503
+    assert trip.json()["detail"]["state"] == "TRIPPED"
+    assert read.status_code == 403
+    assert read.json()["detail"]["reason"] == "interlock_tripped"
+    assert issue.status_code == 423
+    assert issue.json()["detail"]["reason"] == "interlock_tripped"
+    assert rearm.status_code == 503
+    assert rearm.json()["detail"]["grants_restored"] is False
+    assert server.INTERLOCK.state == InterlockState.TRIPPED
+    assert server.AUTHORITY.grants["g-neo"].status == GrantStatus.ACTIVE
+    assert private_sentinel not in trip.text + read.text + issue.text + rearm.text
+
+
+def test_durable_reads_and_denies_drive_simulated_display_transients():
+    grant_headers = {"X-Threshold-Grant-Token": GRANT_VALUE}
+    read = request(
+        "GET",
+        "/housefile",
+        params={"grant": "g-neo"},
+        headers=grant_headers,
+    )
+    assert read.status_code == 200
+    read_frame = server.DISPLAY_STATE.frame(active_grants=1, now=NOW)
+    assert read_frame.mode == DisplayMode.READ
+    assert read_frame.agent == "g-neo"
+
+    denied = request(
+        "POST",
+        "/command",
+        headers=grant_headers,
+        json={"grant": "g-neo", "verb": "navigate", "zone": "workshop"},
+    )
+    assert denied.status_code == 403
+    deny_frame = server.DISPLAY_STATE.frame(active_grants=1, now=NOW)
+    assert deny_frame.mode == DisplayMode.DENY
+    assert deny_frame.agent == "g-neo"
+
+
+def test_display_failures_do_not_reverse_durable_policy_results(monkeypatch):
+    class FailingDisplay:
+        def on_read(self, *_args, **_kwargs):
+            raise RuntimeError("synthetic private display read failure")
+
+        def on_deny(self, *_args, **_kwargs):
+            raise RuntimeError("synthetic private display deny failure")
+
+        def trip(self):
+            raise RuntimeError("synthetic private display trip failure")
+
+        def rearm(self):
+            raise RuntimeError("synthetic private display rearm failure")
+
+    monkeypatch.setattr(server, "DISPLAY_STATE", FailingDisplay())
+    grant_headers = {"X-Threshold-Grant-Token": GRANT_VALUE}
+
+    read = request(
+        "GET",
+        "/housefile",
+        params={"grant": "g-neo"},
+        headers=grant_headers,
+    )
+    denied = request(
+        "POST",
+        "/command",
+        headers=grant_headers,
+        json={"grant": "g-neo", "verb": "navigate", "zone": "workshop"},
+    )
+    tripped = request(
+        "POST",
+        "/sim/interlock/trip",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+    rearmed = request(
+        "POST",
+        "/sim/interlock/rearm",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert read.status_code == 200
+    assert denied.status_code == 403
+    assert tripped.status_code == 200
+    assert tripped.json()["simulated_display_updated"] is False
+    assert server.AUTHORITY.grants["g-neo"].status == GrantStatus.SUSPENDED
+    assert rearmed.status_code == 200
+    assert rearmed.json()["grants_restored"] is False
+
+
 def test_public_openapi_schema_has_no_credential_digest():
     schema = request("GET", "/openapi.json")
     assert schema.status_code == 200
@@ -792,11 +1012,15 @@ def test_public_openapi_schema_has_no_credential_digest():
     assert "credential_digest" not in serialized
     assert "/grants" in document["paths"]
     assert "/grants/{grant_id}/revoke" in document["paths"]
+    assert "/sim/interlock/trip" in document["paths"]
+    assert "/sim/interlock/rearm" in document["paths"]
 
     for path, method, header in [
         ("/housefile", "get", "X-Threshold-Grant-Token"),
         ("/ledger", "get", "X-Threshold-Owner-Token"),
         ("/grants", "post", "X-Threshold-New-Grant-Token"),
+        ("/sim/interlock/trip", "post", "X-Threshold-Owner-Token"),
+        ("/sim/interlock/rearm", "post", "X-Threshold-Owner-Token"),
     ]:
         parameter = next(
             item

@@ -39,9 +39,10 @@ access, and the video limit before making the final choice.
 3. The owner reviews and confirms the digest-bound proposal; deterministic THS-0022
    geometry and separate owner-reviewed THS-0023 materialization are still required before
    it can become policy. The model never chooses access, no-go, or outdoor status.
-4. A simulated physical agent receives a scoped view and is denied access to a no-go zone.
-5. The Jetson-connected I/O rig shows the decision, records a receipt, and responds to the
-   prototype stop control.
+4. A synthetic software agent receives a scoped view and is denied access to a no-go zone.
+5. The currently runnable software path shows terminal/receipt fallbacks and a latched trip
+   that durably suspends grants. A Jetson-connected I/O rig and physical stop control remain
+   future evidence and must not be inferred from the simulation.
 
 The memorable object should be the physical threshold: the model may propose, but it
 cannot bypass deterministic validation, owner confirmation, or the permission gate.
@@ -71,6 +72,22 @@ The scoped-view core, owner/per-grant API boundaries, grant issue and revocation
 window/expiry enforcement, local JSONL decision ledger, and three-step synthetic mock
 agent run today. The mock proves a scoped read, an allowed policy decision that is not
 relayed because no adapter exists, and a no-go denial. It does not move hardware.
+
+THS-0041/0042/0043/0051 now provide a bounded simulated-appliance proof. Owner-authenticated
+trip/re-arm routes are gated by explicit demo mode and exact `ESP32_SERIAL=SIMULATED`. A
+new trip latches its server process first, durably suspends active grants and records ESTOP
+even when none are active, attempts injected adapters independently, and makes duplicate
+trip calls idempotent. Failed persistence leaves that process TRIPPED and makes server
+re-arm unavailable; successful re-arm clears only the latch and never restores grants.
+The end-to-end test covers grant → scoped read → no-go denial → simulated trip → suspended
+denial, plus re-arm and authority restart.
+
+The terminal fallback deterministically shows two-second READ, four-second DENY, and
+latched TRIPPED states. The allowlisted GRANT/DENY/ESTOP receipt primitive renders fixed
+text and 384×256 grayscale PNG; the API discards its in-memory ESTOP PNG, while an optional
+private sink is write-once. The latch is process-local and single-worker, and every timing
+claim is `simulated_software_path_only`. There is still no proof of an NC loop, ESP32,
+serial bridge, OLED, printer, configured adapter, physical device stop, or certified safety.
 
 The privacy-first local capture intake is implemented for JPEG/PNG photos and MOV/MP4/M4V
 video: it creates a bounded normalized batch under ignored `data/capture/`, without a model

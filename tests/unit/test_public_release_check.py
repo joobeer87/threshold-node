@@ -129,6 +129,79 @@ def test_force_tracked_capture_fails_without_echoing_contents(tmp_path: Path):
     assert private_fixture not in result.stdout
 
 
+def test_force_tracked_runtime_receipt_fails_without_echoing_contents(tmp_path: Path):
+    receipts = tmp_path / "data" / "receipts"
+    receipts.mkdir(parents=True)
+    private_fixture = "synthetic-receipt-body-must-not-leak"
+    receipt = receipts / "private-synthetic-receipt.png"
+    receipt.write_bytes(private_fixture.encode("utf-8"))
+    (tmp_path / ".gitignore").write_text("/data/\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-f", str(receipt)], cwd=tmp_path, check=True)
+
+    result, report = run_scan(tmp_path)
+
+    assert result.returncode == 1
+    assert report["findings"] == [
+        {
+            "line": None,
+            "path": "data/receipts/<private>",
+            "rule": "tracked_private_receipt",
+        }
+    ]
+    assert "private-synthetic-receipt.png" not in result.stdout
+    assert private_fixture not in result.stdout
+
+
+def test_force_tracked_root_receipt_fails_without_echoing_contents(tmp_path: Path):
+    receipts = tmp_path / "receipts"
+    receipts.mkdir()
+    private_fixture = "synthetic-root-receipt-must-not-leak"
+    receipt = receipts / "private-synthetic-receipt.png"
+    receipt.write_bytes(private_fixture.encode("utf-8"))
+    (tmp_path / ".gitignore").write_text("/receipts/\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-f", str(receipt)], cwd=tmp_path, check=True)
+
+    result, report = run_scan(tmp_path)
+
+    assert result.returncode == 1
+    assert report["findings"] == [
+        {
+            "line": None,
+            "path": "receipts/<private>",
+            "rule": "tracked_private_receipt",
+        }
+    ]
+    assert "private-synthetic-receipt.png" not in result.stdout
+    assert private_fixture not in result.stdout
+
+
+def test_force_tracked_runtime_data_uses_a_bounded_redacted_path(tmp_path: Path):
+    runtime = tmp_path / "data" / "synthetic-private-space"
+    runtime.mkdir(parents=True)
+    private_fixture = "synthetic-runtime-body-must-not-leak"
+    snapshot = runtime / "dwelling-snapshot.json"
+    snapshot.write_text(private_fixture, encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("/data/\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-f", str(snapshot)], cwd=tmp_path, check=True)
+
+    result, report = run_scan(tmp_path)
+
+    assert result.returncode == 1
+    assert report["findings"] == [
+        {
+            "line": None,
+            "path": "data/<private>",
+            "rule": "tracked_private_runtime_data",
+        }
+    ]
+    assert "synthetic-private-space" not in result.stdout
+    assert "dwelling-snapshot.json" not in result.stdout
+    assert private_fixture not in result.stdout
+
+
 def test_git_index_failure_fails_closed_without_echoing_tool_output(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()

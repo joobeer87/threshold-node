@@ -561,7 +561,12 @@ class GrantMetadataStore:
             raise GrantStoreError("grant metadata store is invalid")
         grants = cls._records_to_grants(document["grants"])
         witness = cls._decode_witness(document["ledger_witness"], revision)
-        pending = cls._decode_pending(document["pending"], revision, grants)
+        pending = cls._decode_pending(
+            document["pending"],
+            revision,
+            grants,
+            witness,
+        )
         if revision == 0 and witness is not None:
             raise GrantStoreError("grant metadata store is invalid")
         if revision > 0 and witness is None:
@@ -642,6 +647,7 @@ class GrantMetadataStore:
         value: object,
         revision: int,
         effective_grants: dict[str, Grant],
+        ledger_witness: GrantLedgerWitness | None,
     ) -> PendingGrantTransaction | None:
         if value is None:
             return None
@@ -692,6 +698,14 @@ class GrantMetadataStore:
             statuses,
             normalized_event,
         )
+        cls._validate_pending_base(
+            kind,
+            revision,
+            effective_grants,
+            target_grants,
+            statuses,
+            ledger_witness,
+        )
         return PendingGrantTransaction(
             transaction=transaction,
             kind=kind,
@@ -705,6 +719,37 @@ class GrantMetadataStore:
             target_grants=target_grants,
             previous_statuses=statuses,
         )
+
+    @classmethod
+    def _validate_pending_base(
+        cls,
+        kind: str,
+        revision: int,
+        effective: dict[str, Grant],
+        target: dict[str, Grant],
+        previous: dict[str, GrantStatus],
+        witness: GrantLedgerWitness | None,
+    ) -> None:
+        """Bind a pending transition to the exact prior clean snapshot."""
+
+        if kind == "demo_seed" and revision != 0:
+            raise GrantStoreError("grant metadata store is invalid")
+        source = effective if kind in {"issue", "demo_seed"} else target
+        base_records = cls._normalize_outgoing(source)
+        by_id = {record["id"]: record for record in base_records}
+        if kind not in {"issue", "demo_seed"}:
+            for grant_id, previous_status in previous.items():
+                by_id[grant_id]["status"] = previous_status.value
+        canonical_base = [by_id[key] for key in sorted(by_id)]
+        base_sha256 = hashlib.sha256(
+            cls._canonical_json_line(canonical_base)
+        ).hexdigest()
+        if revision == 0:
+            if witness is not None or canonical_base:
+                raise GrantStoreError("grant metadata store is invalid")
+            return
+        if witness is None or base_sha256 != witness.target_sha256:
+            raise GrantStoreError("grant metadata store is invalid")
 
     @classmethod
     def _validate_event(
@@ -790,7 +835,13 @@ class GrantMetadataStore:
 
         if set(effective) != set(target) or cls.target_sha256(effective) != cls.target_sha256(target):
             raise GrantStoreError("grant metadata store is invalid")
-        if not previous or set(previous) - set(target):
+        if set(previous) - set(target):
+            raise GrantStoreError("grant metadata store is invalid")
+        if kind != "suspend_all" and not previous:
+            raise GrantStoreError("grant metadata store is invalid")
+        if kind == "suspend_all" and any(
+            grant.status == GrantStatus.ACTIVE for grant in target.values()
+        ):
             raise GrantStoreError("grant metadata store is invalid")
         expected_to = {
             "revoke": GrantStatus.REVOKED,
