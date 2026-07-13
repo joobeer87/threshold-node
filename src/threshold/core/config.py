@@ -19,6 +19,7 @@ class Settings:
     demo_grant_token: str | None = field(default=None, repr=False)
     bind: str = "127.0.0.1:8471"
     ledger_path: str = "data/ledger.jsonl"
+    grant_store_path: str = "data/grants.json"
     esp32_serial: str = "SIMULATED"
     demo_mode: bool = False
     allow_network_bind: bool = False
@@ -35,6 +36,10 @@ class Settings:
             ledger_path=(
                 values.get("THS_LEDGER_PATH", "data/ledger.jsonl").strip()
                 or "data/ledger.jsonl"
+            ),
+            grant_store_path=(
+                values.get("THS_GRANT_STORE_PATH", "data/grants.json").strip()
+                or "data/grants.json"
             ),
             esp32_serial=values.get("ESP32_SERIAL", "SIMULATED").strip(),
             demo_mode=_is_true(values.get("THS_DEMO_MODE")),

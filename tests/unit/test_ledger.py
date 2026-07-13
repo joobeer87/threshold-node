@@ -11,7 +11,7 @@ import pytest
 
 from threshold.core import ledger as ledger_module
 from threshold.core.events import EventBus
-from threshold.core.ledger import JsonlLedger
+from threshold.core.ledger import JsonlLedger, LedgerWitness
 from threshold.core.types import EventType, Tier
 
 
@@ -24,6 +24,17 @@ def event(sequence: int) -> dict[str, object]:
         "type": EventType.READ,
         "agent": SYNTHETIC_AGENT,
         "detail": f"synthetic read {sequence}",
+    }
+
+
+def transaction_event(revision: int = 1) -> dict[str, object]:
+    return {
+        "ts": "2026-07-12T10:00:00Z",
+        "type": EventType.GRANT,
+        "agent": "g-synthetic-ledger",
+        "detail": "synthetic grant issued",
+        "transaction": "tx-0123456789abcdef0123456789abcdef",
+        "grant_revision": revision,
     }
 
 
@@ -69,6 +80,38 @@ def test_concurrent_instances_append_complete_unmixed_lines(tmp_path):
     }
 
 
+def test_prepared_event_has_an_exact_checkpoint_and_verifiable_witness(tmp_path):
+    ledger = JsonlLedger(tmp_path / "private" / "events.jsonl")
+    prepared = ledger.prepare_event(transaction_event())
+
+    assert ledger.inspect_prepared(prepared) is False
+    persisted = ledger.append_prepared(prepared)
+    assert persisted == transaction_event()
+    assert ledger.inspect_prepared(prepared) is True
+    ledger.verify_witness(
+        LedgerWitness(
+            transaction=str(persisted["transaction"]),
+            grant_revision=int(persisted["grant_revision"]),
+            ledger_offset=prepared.checkpoint.offset,
+            receipt_sha256=prepared.receipt_sha256,
+        )
+    )
+    assert ledger.read()[0]["transaction"] == persisted["transaction"]
+    assert ledger.read()[0]["grant_revision"] == 1
+
+
+def test_prepared_event_refuses_a_changed_tail(tmp_path):
+    ledger = JsonlLedger(tmp_path / "private" / "events.jsonl")
+    prepared = ledger.prepare_event(transaction_event())
+    ledger.append(event(1))
+
+    with pytest.raises(OSError, match="precondition changed"):
+        ledger.append_prepared(prepared)
+    with pytest.raises(OSError, match="ambiguous"):
+        ledger.inspect_prepared(prepared)
+    assert [item["type"] for item in ledger.read()] == ["READ"]
+
+
 def test_read_skips_corrupt_oversized_and_non_object_lines(tmp_path):
     path = tmp_path / "events.jsonl"
     oversized = b"x" * (ledger_module.MAX_ENTRY_BYTES + 1)
@@ -81,6 +124,7 @@ def test_read_skips_corrupt_oversized_and_non_object_lines(tmp_path):
         + b"\n"
         + b'{"ts":"2026-07-12T10:01:00Z","type":"DENY","agent":"SYNTHETIC","detail":"two"}\n'
     )
+    path.chmod(0o600)
 
     assert [entry["type"] for entry in JsonlLedger(path).read(limit=10)] == [
         "DENY",
@@ -137,6 +181,7 @@ def test_read_drops_unrecognized_fields_from_existing_lines(tmp_path):
         '"agent":"SYNTHETIC","detail":"safe","credential":"not-returned"}\n',
         encoding="utf-8",
     )
+    path.chmod(0o600)
 
     assert JsonlLedger(path).read() == [
         {
@@ -157,6 +202,7 @@ def test_read_never_fabricates_missing_or_invalid_persisted_fields(tmp_path):
         '{"ts":"2026-07-12T10:00:00Z","type":"READ","agent":"system"}\n',
         encoding="utf-8",
     )
+    path.chmod(0o600)
     assert JsonlLedger(path).read() == []
 
 
@@ -211,6 +257,7 @@ def test_incomplete_tail_is_repaired_before_append(tmp_path):
         b'"agent":"SYNTHETIC","detail":"complete"}\n'
         b'{"ts":"partial"'
     )
+    path.chmod(0o600)
     ledger = JsonlLedger(path)
     ledger.append(event(2))
     assert [entry["detail"] for entry in ledger.read()] == [
@@ -227,6 +274,7 @@ def test_oversized_incomplete_tail_fails_closed_without_unbounded_recovery(tmp_p
     )
     original = prefix + b"x" * (ledger_module.MAX_ENTRY_BYTES + 1)
     path.write_bytes(original)
+    path.chmod(0o600)
 
     with pytest.raises(OSError, match="recovery limit"):
         JsonlLedger(path).append(event(2))
@@ -244,9 +292,39 @@ def test_symlink_ledger_target_is_refused(tmp_path):
     assert target.read_text(encoding="utf-8") == "unchanged"
 
 
+def test_nonprivate_file_parent_and_symlink_ancestor_are_refused(tmp_path):
+    private = tmp_path / "private"
+    path = private / "events.jsonl"
+    ledger = JsonlLedger(path)
+    ledger.append(event(1))
+    path.chmod(0o644)
+
+    with pytest.raises(OSError):
+        ledger.append(event(2))
+    with pytest.raises(OSError, match="ledger read unavailable"):
+        ledger.read(fail_on_unavailable=True)
+    assert stat.S_IMODE(path.stat().st_mode) == 0o644
+
+    public = tmp_path / "public"
+    public.mkdir(mode=0o755)
+    public.chmod(0o755)
+    with pytest.raises(OSError):
+        JsonlLedger(public / "events.jsonl").append(event(1))
+
+    real = tmp_path / "real-private"
+    real.mkdir(mode=0o700)
+    real.chmod(0o700)
+    linked = tmp_path / "linked-private"
+    linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(OSError):
+        JsonlLedger(linked / "events.jsonl").append(event(1))
+    assert not (real / "events.jsonl").exists()
+
+
 def test_tail_read_has_a_fixed_byte_budget(tmp_path, monkeypatch):
     path = tmp_path / "events.jsonl"
     path.write_bytes(b"discarded-prefix\n" * 300_000)
+    path.chmod(0o600)
     ledger = JsonlLedger(path)
     ledger.append(event(1))
 

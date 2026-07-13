@@ -10,7 +10,9 @@ branch and draft pull request before merge. Repeat the safety checks below for e
 - Working tree and staged diff are understood and clean.
 - Test suite, compile check, public-tree scan, and independent secret scan pass.
 - `git ls-files` contains no environment files, credentials, archives, raw/review media,
-  runtime data, or generated caches.
+  runtime data, private grant snapshots, ledgers, receipts, or generated caches.
+- The configured grant store and ledger remain outside the candidate public tree. Treat them
+  as one private recovery pair; never publish either file, its backup, or a recovery copy.
 - Commit metadata uses a public noreply email.
 - README, MIT license, security policy, contribution guide, CI, and issue/PR templates are
   present.
@@ -31,6 +33,19 @@ The GPT-5.6 request adapter and provider-free contract tests may be described pr
 Do not claim live model quality, cost, or end-to-end extraction evidence until a reviewed
 synthetic provider run exists. Never publish a real capture request, response, proposal,
 decision, batch/proposal digest, or runtime receipt.
+
+The grant authority may be described as a local digest-only store with ledger-bound,
+fail-closed restart recovery only after the focused recovery tests and full gate pass. Do
+not call it tamper-evident, distributed, or crash-proof. State explicitly that raw grant
+credentials are never persisted, synthetic seeding is limited to an empty first boot in
+explicit demo mode, and corrupt or ambiguous existing state returns unavailable rather than
+falling back to seeds.
+
+Quiet-hours evidence may claim command-only gating against an explicit IANA timezone: one
+UTC instant is converted to policy-local time, an active window is durably denied, and an
+invalid policy or timezone returns unavailable without relay. Do not imply that reads are
+quiet-hours blocked, that a command was physically stopped, or that this prototype is a
+certified safety control.
 
 ## After a public push
 

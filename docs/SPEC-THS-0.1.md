@@ -10,7 +10,9 @@ Status: DRAFT-A (frozen for build week) · Owner: The Architect.
 - **SystemItem** `{id, name, zone, tag: water|power|hvac|net, detail}`
 - **InventoryItem** `{id, name, zone, flags[], note?}` — reserved flags: `fragile`, `do-not-touch`, `high-value`.
 - **Quirk** `{id, zone, text}` — tribal knowledge, transmitted with layout scope.
-- **Policies** `{quietHours{start,end}, teleop:"per-session"|"never", residency:"local-first"}`
+- **Policies** `{quietHours{start,end,timezone}, teleop:"per-session"|"never", residency:"local-first"}`
+  - `start` and `end` use zero-padded `HH:MM`; `timezone` is an explicit IANA timezone
+    identifier resolved by the node through `zoneinfo.ZoneInfo`.
 
 ## 2. Grants
 `Grant {id, name, kind: humanoid|agent|human, scopes[], zones[], window, expires, status: active|revoked|expired|suspended, issued}`
@@ -26,9 +28,25 @@ validation rejects already-ended policies and policies with no usable intersecti
 
 The local API generates `id` and `issued`. A new credential arrives separately from the
 JSON grant body, is hashed immediately, and is never part of the public Grant projection.
-Issued grant metadata is process-local in v0.1 and resets when the node restarts.
-Owner and per-grant credentials are distinct bounded visible-ASCII values suitable for
-masked HTTP header fields.
+The private authoritative store persists complete grant metadata across restart but stores
+only a digest of each bearer credential; raw credentials never persist. Owner and per-grant
+credentials are distinct bounded visible-ASCII values suitable for masked HTTP header
+fields.
+
+Grant revisions are committed through the local ledger rather than by a naive two-file
+save-and-rollback sequence. A pending envelope binds the exact target grants, base/target
+revision, prepared event bytes, ledger checkpoint, and receipt digest. A pending issue is
+not part of the effective grant set before its ledger receipt. Pending revoke, expiry, and
+suspend transitions expose their restrictive target state, so recovery cannot temporarily
+reactivate a grant. Recovery aborts an uncommitted issue, rolls an uncommitted restrictive
+transition forward, or finalizes a transition whose exact ledger receipt is already
+present. Corrupt, ambiguous, or witness-mismatched authority state makes grant operations
+unavailable with HTTP `503`; it never falls back to seeds. First-boot synthetic seeding is
+allowed only in explicit demo mode. This is crash-consistency evidence, not tamper evidence.
+
+Revoke, observed expiry, and future E-stop suspension therefore survive restart. Expiry is
+persisted when a request first observes the exact expiry/window-end boundary; the pure
+manager computes the transition but does not mutate state before the authority commits it.
 
 ## 3. Scoped read — normative semantics (housefile/scoped_view.py)
 1. Pure `scoped_view()` returns `{error:"grant_inactive"}` with no resource fields when
@@ -40,7 +58,8 @@ masked HTTP header fields.
 4. `read:systems` / `read:inventory` filter to granted zones only.
 5. **Safety invariant:** `fragile|do-not-touch` flags in granted zones transmit even WITHOUT
    `read:inventory` (as `safety[]`, name-free). Safety metadata is not a privilege tier.
-6. `policies.quietHours` always transmits. `capabilities` = granted `command:*` scopes only.
+6. `policies.quietHours`, including its IANA `timezone`, always transmits. `capabilities` =
+   granted `command:*` scopes only.
 7. Ledger entry appends **before** the payload returns. No unlogged reads.
 
 ## 4. Enforcement tiers — label the guarantee
@@ -52,14 +71,32 @@ masked HTTP header fields.
 Adapters compute tier from capabilities; asserting it by hand fails audit test T-ENF-01.
 An ADVISORY zone presented as ENFORCED is a spec violation.
 
-## 5. Ledger
-Append-only JSON Lines `{ts, type: GRANT|READ|DENY|REVOKE|ESTOP|PROVISION, agent, detail,
-tier?}` in ignored local storage. API-boundary events append and fsync before a successful
-payload or state-change response. Reads are bounded and tolerate corrupt lines. The ledger
-rejects malformed historical entries rather than inventing missing fields. The ledger is
-durable but is not hash-chained or tamper-evident. ESTOP entries are never pruned.
+## 5. Quiet-hours command policy
 
-## 6. Vision proposal boundary
+Quiet hours gate `command:*` operations only; they do not gate scoped reads. The API
+captures UTC exactly once while holding the grant lock, uses the same instant for the grant
+decision and receipt, converts it to `policies.quietHours.timezone`, and then evaluates the
+local wall-clock interval. Intervals are start-inclusive and end-exclusive. An overnight
+interval wraps across midnight, and equal start/end values mean quiet hours are active all
+day.
+
+When quiet hours are active, the node appends and fsyncs DENY before returning `403` with
+`relayed:false`. If the timezone cannot be resolved or the quiet-hours policy is malformed,
+the node appends and fsyncs DENY, relays nothing, and returns `503`. A schema-shaped timezone
+string is not sufficient proof that the host has that IANA definition; runtime resolution
+is authoritative.
+
+## 6. Ledger
+Append-only JSON Lines `{ts, type: GRANT|READ|DENY|REVOKE|ESTOP|PROVISION, agent, detail,
+tier?, transaction?, grant_revision?}` in ignored local storage. `transaction` and
+`grant_revision` are an optional pair reserved for revisioned grant-authority commits.
+API-boundary events append and fsync before a successful payload or state-change response.
+Bounded owner reads tolerate corrupt unrelated lines and reject malformed fields rather
+than inventing data. Grant recovery is stricter: the current authority revision must verify
+its exact witnessed ledger line. The ledger is durable but is not hash-chained or
+tamper-evident. ESTOP entries are never pruned.
+
+## 7. Vision proposal boundary
 
 `ths/vision-proposal/0.1` is a private review artifact, not a `ths/0.1` Housefile. It may
 contain one locally identified zone candidate, bounded inventory candidates with only the

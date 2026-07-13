@@ -17,7 +17,11 @@ def test_happy_path_layout():
     v = scoped_view(SEED_FILE, g([Scope.READ_LAYOUT], ["kitchen", "living"]))
     zs = zmap(v)
     assert zs["kitchen"]["name"] == "Kitchen" and zs["kitchen"]["boundary"]
-    assert v["policies"]["quietHours"]["start"] == "21:30"          # rule 6
+    assert v["policies"]["quietHours"] == {                         # rule 6
+        "start": "21:30",
+        "end": "06:30",
+        "timezone": "Etc/UTC",
+    }
 
 def test_rule1_inactive_grant_transmits_nothing():
     v = scoped_view(SEED_FILE, g([Scope.READ_LAYOUT], ["kitchen"], GrantStatus.REVOKED))

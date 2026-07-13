@@ -23,6 +23,7 @@ RFC3339_TIMESTAMP = re.compile(
 class GrantDecision:
     allowed: bool
     reason: str
+    next_status: GrantStatus | None = None
 
 
 def utc_now() -> datetime:
@@ -129,8 +130,11 @@ class GrantManager:
             except ValidationError:
                 return GrantDecision(False, "grant_invalid_expiry")
             if current >= expires_at:
-                grant.status = GrantStatus.EXPIRED
-                return GrantDecision(False, "grant_expired")
+                return GrantDecision(
+                    False,
+                    "grant_expired",
+                    next_status=GrantStatus.EXPIRED,
+                )
 
         try:
             window = parse_window(grant.window)
@@ -138,8 +142,11 @@ class GrantManager:
             return GrantDecision(False, "grant_invalid_window")
         if window is not None:
             if current >= window[1]:
-                grant.status = GrantStatus.EXPIRED
-                return GrantDecision(False, "grant_expired")
+                return GrantDecision(
+                    False,
+                    "grant_expired",
+                    next_status=GrantStatus.EXPIRED,
+                )
             if current < window[0]:
                 return GrantDecision(False, "grant_outside_window")
         return GrantDecision(True, "grant_active")

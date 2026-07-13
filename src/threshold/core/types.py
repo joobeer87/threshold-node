@@ -47,6 +47,7 @@ class Quirk:
 @dataclass(frozen=True)
 class Policies:
     quiet_start: str = "21:30"; quiet_end: str = "06:30"
+    timezone: str = "Etc/UTC"
     teleop: str = "per-session"; residency: str = "local-first"
 
 @dataclass(frozen=True)

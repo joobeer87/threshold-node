@@ -173,7 +173,8 @@
   "policies": {
     "quietHours": {
       "start": "21:30",
-      "end": "06:30"
+      "end": "06:30",
+      "timezone": "Etc/UTC"
     },
     "teleop": "per-session",
     "residency": "local-first"
