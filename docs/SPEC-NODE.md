@@ -40,6 +40,12 @@ tier  : ENFORCED (matter-rvc)
 -- boundary transmitted, interior withheld --
 ```
 5. **Owner console** — reference/Threshold-MVP.jsx rebuilt against the live API (P5). Same blueprint UI, synthetic demo data.
+6. **Vision proposal CLI** — `threshold.capture.openai_vision` operates only on a fixed
+   private `data/capture/batch-<id>` created by THS-0020. `propose` requires the expected
+   manifest SHA-256, an environment-only OpenAI API key, and explicit external-processing
+   consent. `confirm|reject` prompts for owner authentication and requires the expected
+   proposal SHA-256. The surface writes only private proposal/decision artifacts; it has no
+   canonical housefile, adapter, grant, command, or hardware write capability.
 
 All checked-in housefile, receipt, and console data is fictional. Real dwelling exports,
 camera frames, device identifiers, credentials, and printed receipts belong in ignored

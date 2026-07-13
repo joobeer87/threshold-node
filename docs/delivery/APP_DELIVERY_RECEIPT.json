@@ -1,44 +1,42 @@
 {
   "schema_version": "1.0",
-  "task": "wave_3_ths_0020_privacy_first_capture_intake",
-  "authority": "L2_local_plus_user_authorized_feature_branch_push_and_draft_pr",
-  "delivery_gate": "pass_feature_branch_draft_pr",
+  "task": "ths_0021_guarded_vision_proposals",
+  "authority": "L2_local_plus_user_authorized_pr_2_merge",
+  "delivery_gate": "warn_live_provider_eval_pending",
   "impacted_features": [
-    "THS-F004",
-    "THS-F010",
-    "THS-F013"
+    "THS-F006",
+    "THS-F010"
   ],
   "proof": {
-    "capture_focused_tests": "pass_49",
-    "real_ffmpeg_smoke": "pass_synthetic_jpeg_png_mp4_only",
+    "proposal_focused_tests": "pass_39_provider_free",
+    "official_api_contract_review": "pass_responses_images_structured_outputs",
     "compile_check": "pass",
-    "automated_suite": "pass_151",
-    "public_tree_scan": "pass_0_findings_71_candidate_files",
-    "prior_waves_baseline": "pass_109_before_wave_3",
-    "hosted_ci": "pass_pr_2_python_3_10_and_3_12"
+    "automated_suite": "pass_190",
+    "public_tree_scan": "pass_75_files_zero_findings",
+    "live_synthetic_provider_eval": "not_run"
   },
   "docs_impact": "docs/delivery/DOCS_IMPACT_MATRIX.md",
   "feature_index": "docs/delivery/FEATURE_INDEX.md",
   "qa_matrix": "docs/delivery/QA_MATRIX.md",
   "human_leverage": {
     "status": "pass",
-    "summary": "One bounded command prepares a private room batch without a model call or canonical write; validation is automated so real footage never needs to enter the repository."
+    "summary": "One proposal command binds verified capture evidence to strict observations, and one separate digest-gated command records the owner's terminal decision without applying policy."
   },
   "blocked_claims": [
+    "live GPT-5.6 response quality, cost, or latency",
+    "complete THS-0.1 housefile generation",
+    "boundary geometry or access assignment",
+    "canonical housefile mutation or applied policy",
+    "tamper-evident proposal history",
+    "real-footage provider evaluation or publication approval",
     "persistent grant metadata across restart",
     "robot command relay or device motion",
-    "device-native adapter enforcement",
-    "tamper-evident ledger",
-    "GPT-5.6 extraction or any provider call",
-    "owner confirmation and canonical housefile update from capture",
-    "real-footage validation or publication approval",
-    "live owner console",
-    "hardware stop behavior or measured stop latency",
-    "certified safety behavior",
-    "merge, deployment, or full submission readiness"
+    "hardware stop behavior or certified safety behavior",
+    "current-branch push, pull request, merge, deployment, or submission readiness"
   ],
-  "hosted_mutation_scope": "feature_branch_push_and_draft_pr_only",
+  "hosted_mutation_scope": "user_authorized_merge_of_pr_2_only",
   "secret_material_returned": false,
+  "live_provider_request_performed": false,
   "hosted_or_provider_mutation": true,
-  "merge_or_deploy_performed": false
+  "merge_performed": "pr_2_only"
 }

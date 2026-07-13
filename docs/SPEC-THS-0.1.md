@@ -58,3 +58,25 @@ tier?}` in ignored local storage. API-boundary events append and fsync before a 
 payload or state-change response. Reads are bounded and tolerate corrupt lines. The ledger
 rejects malformed historical entries rather than inventing missing fields. The ledger is
 durable but is not hash-chained or tamper-evident. ESTOP entries are never pruned.
+
+## 6. Vision proposal boundary
+
+`ths/vision-proposal/0.1` is a private review artifact, not a `ths/0.1` Housefile. It may
+contain one locally identified zone candidate, bounded inventory candidates with only the
+reserved `fragile|do-not-touch|high-value` flags, evidence frame references, confidence
+levels, and owner-facing uncertainties. It MUST NOT contain or imply boundary geometry,
+access, policies, grants, commands, enforcement tiers, canonical paths, or applied state.
+THS-0022 owns geometry.
+
+Provider output uses a separate strict observation schema and is untrusted even when the
+provider reports schema adherence. Local validation rejects unknown fields, type coercion,
+duplicate keys/names/references, non-finite values, control characters, excessive counts or
+lengths, unrecognized flags, and references to frames not sent to the model. Candidate IDs
+are generated locally after validation.
+
+The persisted proposal binds its batch ID, capture-manifest hash, ordered frame hashes,
+provider/model, prompt version, and validator version. An owner decision binds the exact
+proposal digest and is terminal: one confirm or reject record. “Confirmed” means
+owner-approved proposal only. It does not create geometry, change a revision, mutate
+grants, or write the canonical housefile. Hash binding detects later changes but is not
+tamper evidence against an attacker who controls the local filesystem.
