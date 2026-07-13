@@ -92,6 +92,25 @@ NOT A SAFETY SYSTEM
    consent. `confirm|reject` prompts for owner authentication and requires the expected
    proposal SHA-256. The surface writes only private proposal/decision artifacts; it has no
    canonical housefile, adapter, grant, command, or hardware write capability.
+7. **Deterministic geometry library** — `threshold.capture.geometry` accepts one explicit,
+   ordered sequence of zone IDs, suggested names, proposal SHA-256 bindings, and locally
+   assigned candidate IDs. Suggested names are trimmed printable Unicode, 1–80 characters.
+   `ths/rectangular-strip-grid/0.1` maps order index `i` to
+   `[(i % 8) * 400, (i // 8) * 300, 400, 300]` and emits canonical
+   `ths/geometry-proposal/0.1` bytes plus their digest. It performs no model call,
+   persistence, survey/spatial inference, or housefile write and has no access, no-go,
+   restricted, outdoor, grant, command, or enforcement input. The caller supplies the
+   proposal binding; this module does not open or authenticate proposal/decision artifacts.
+8. **Owner-reviewed synthetic materialization library** —
+   `materialize_housefile(path, geometry_bytes, review_payload)` is a separate explicit
+   write boundary. The review must bind the exact geometry digest and each ordered proposal
+   digest, declare `owner_reviewed:true` and `synthetic_fixture:true`, supply every zone's
+   reviewed name/access/outdoor value, and match the current housefile revision. The
+   implementation strictly parses the existing file, geometry, and review; validates the
+   final THS-0.1 document; increments the revision; and commits under one private POSIX
+   file lock with compare-and-swap, atomic replacement, directory fsync, and rollback on a
+   failed final sync. The returned receipt contains only bounded digests, revisions, and a
+   zone count. The review marker is declarative evidence, not owner authentication.
 
 All checked-in housefile, receipt, and console data is fictional. Real dwelling exports,
 camera frames, device identifiers, credentials, and printed receipts belong in ignored
@@ -151,6 +170,20 @@ separate hosts or replicated storage. FastAPI currently performs synchronous loc
 private-file validation, and `fsync` work on its event loop, so slow storage can delay other
 requests handled by that worker. This is a pre-alpha correctness path, not a throughput or
 distributed-consensus design.
+
+Geometry and materialization fail closed independently of the HTTP grant authority. An
+invalid or noncanonical geometry document, changed geometry/proposal digest, reordered or
+incomplete review, duplicate zone, stale revision, nonsynthetic target/review, unknown
+field, schema violation, unsafe path, unavailable lock, write failure, or fsync failure
+must not produce a successful receipt. The compare-and-swap is local to one filesystem and
+one canonical target; it is neither a distributed transaction nor a claim of crash-proof
+storage. Digest binding detects changed inputs but does not authenticate them or provide
+tamper evidence.
+
+The materializer is not invoked by vision confirmation or by the server. The running API
+continues to serve the in-code synthetic seed, so a successfully materialized temporary
+fixture is not live node state. Current writes are restricted to unmistakably synthetic
+fixtures; real-dwelling materialization requires a separate security and workflow review.
 
 The simulated latch is not a certified emergency-stop or life-safety system. Its software
 timing does not prove physical response time, an NC loop, an ESP32 input, an OLED or printer,

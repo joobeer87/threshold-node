@@ -66,6 +66,30 @@ discarded. Any elapsed field is labeled `simulated_software_path_only`, and
 bridge, OLED, printer, configured robot adapter, device movement/stop, or certified-safety
 evidence.
 
+## Runnable now — synthetic geometry/materialization, not a real floor plan
+
+The focused provider-free proofs run against explicit synthetic bindings and private
+temporary housefiles:
+
+```bash
+.venv/bin/python -m pytest -q \
+  tests/unit/test_geometry.py \
+  tests/unit/test_materialize.py \
+  tests/integration/test_geometry_materialization.py
+```
+
+THS-0022 maps explicit room order to fixed 400×300 rectangles in an eight-column grid and
+binds canonical output to exact proposal digests. It does not inspect frames or infer
+physical dimensions, adjacency, access, no-go, or outdoor policy. THS-0023 then requires a
+separate complete review with explicit names/access/outdoor values, the same digests, and
+the expected synthetic housefile revision before a validated local atomic update.
+
+This test output is suitable as software-path evidence only. Runtime geometry, review,
+receipt, digest, and housefile artifacts stay private. Proposal confirmation does not call
+the materializer, the API does not serve its output, and real-dwelling materialization is
+not permitted by this proof. Keep blueprint-console footage in the target sequence until
+PR #7 has frontend tests and a human visual review.
+
 ## Target submission sequence — 75 seconds
 
 Target script only. Do not record or submit this sequence until each shown behavior has an

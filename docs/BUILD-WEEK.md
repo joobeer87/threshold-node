@@ -36,9 +36,10 @@ access, and the video limit before making the final choice.
 1. A phone walk becomes a bounded, private local frame batch.
 2. A guarded GPT-5.6 structured-output step turns selected frames into a constrained,
    incomplete observation proposal.
-3. The owner reviews and confirms the digest-bound proposal; deterministic THS-0022
-   geometry and separate owner-reviewed THS-0023 materialization are still required before
-   it can become policy. The model never chooses access, no-go, or outdoor status.
+3. The owner reviews and confirms the digest-bound proposal. Deterministic THS-0022
+   geometry and separate owner-reviewed THS-0023 materialization now have synthetic local
+   proof; the model never chooses access, no-go, or outdoor status. Real-dwelling use and
+   live API loading remain prohibited/unimplemented.
 4. A synthetic software agent receives a scoped view and is denied access to a no-go zone.
 5. The currently runnable software path shows terminal/receipt fallbacks and a latched trip
    that durably suspends grants. A Jetson-connected I/O rig and physical stop control remain
@@ -100,10 +101,13 @@ or tamper-evident record.
 The GPT-5.6 request adapter, strict proposal validator, and digest-bound owner decision are
 implemented and provider-free tested. A live synthetic model quality, cost, latency, and
 token-use evaluation has not been run, so THS-0021 is complete as a guarded adapter but is
-not demo-proven model evidence. THS-0022 geometry, THS-0023 owner-reviewed canonical
-materialization, the live owner console, real robot adapters, hardware bridge, and complete
-submission demo still need to be built and tested. The repository should only claim a
-capability after its code and demo evidence exist.
+not demo-proven model evidence. THS-0022 now emits a canonical digest-bound fixed geometry
+from explicit order. THS-0023 validates an exact explicit review and atomically advances an
+unmistakably synthetic temporary housefile under local revision compare-and-swap. That
+proof is not observed geometry, a real-house workflow, or live server state. Real-dwelling
+materialization review, the live owner console, robot adapters, hardware bridge, and the
+complete submission demo still need to be built and tested. The repository should only
+claim a capability after its code and demo evidence exist.
 
 Real-room footage can make the video stronger, but the source and normalized capture batch
 must stay local. Any externally published edit must pass `REAL-FOOTAGE-CHECKLIST.md`, and

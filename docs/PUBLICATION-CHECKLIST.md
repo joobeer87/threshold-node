@@ -34,6 +34,19 @@ Do not claim live model quality, cost, or end-to-end extraction evidence until a
 synthetic provider run exists. Never publish a real capture request, response, proposal,
 decision, batch/proposal digest, or runtime receipt.
 
+THS-0022 may be described as the exact provider-free
+`ths/rectangular-strip-grid/0.1` algorithm: explicit order, eight columns, fixed 400×300
+rectangles, canonical JSON, and digest binding. THS-0023 may be described as a
+synthetic-only reviewed materializer with exact proposal/geometry bindings, explicit
+name/access/outdoor choices, strict validation, local revision compare-and-swap, and atomic
+replacement. Runtime geometry, reviews, receipts, digests, and resulting housefiles must
+stay out of Git.
+
+Do not describe those primitives as inferred or surveyed floor plans, model-assigned
+policy, real-dwelling support, owner authentication, automatic materialization, tamper
+evidence, distributed/crash-proof authority, or live API state. Proposal confirmation
+still writes no geometry or housefile, and the API still serves its in-code synthetic seed.
+
 The grant authority may be described as a local digest-only store with ledger-bound,
 fail-closed restart recovery only after the focused recovery tests and full gate pass. Do
 not call it tamper-evident, distributed, or crash-proof. State explicitly that raw grant
@@ -64,8 +77,8 @@ value must remain labeled `simulated_software_path_only` beside
 
 Do not claim an NC loop, ESP32/serial bridge, OLED, printer, configured adapter invocation,
 device movement/stop, physical stop timing, or certified-safety result. Those remain later
-hardware/adapter proof gates. The live synthetic GPT-5.6 evaluation, deterministic geometry,
-owner-reviewed materialization, and live owner console also remain outstanding.
+hardware/adapter proof gates. The live synthetic GPT-5.6 evaluation, real-dwelling
+materialization review, and live owner console also remain outstanding.
 
 ## After a public push
 

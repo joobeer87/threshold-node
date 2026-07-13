@@ -2,26 +2,27 @@
 
 | Surface | Impact | State |
 |---|---|---|
-| README | simulated trip/re-arm surface, durable suspension, display/receipt evidence, software-only nonclaims, remaining blockers | Updated through Wave 5 |
+| README | fixed digest-bound geometry, explicit reviewed synthetic materialization, standalone/live-API boundary, privacy and real-use nonclaims | Updated through Wave 6 |
 | AGENTS.md | public-repo, synthetic-only, validation, and operator boundaries | Reviewed; no change |
-| SECURITY.md | demo-only owner-auth controls, latch-first denial, process-local limits, private receipt boundary, physical nonclaims | Updated for Wave 5 |
+| CODING-GUIDE | canonical public schema and byte-identical installed package-data projection | Updated for Wave 6 |
+| SECURITY.md | fail-closed geometry/materialization digest, schema, synthetic, lock/CAS boundaries; no authentication/tamper/real-use claims | Updated for Wave 6 |
 | HARDWARE.md | simulated interlock/display/receipt boundaries versus untested NC loop, ESP32, OLED, printer, and physical timing | Updated for Wave 5 |
-| SPEC-NODE + SPEC-THS | owner-authenticated simulated controls, durable ESTOP/suspension, re-arm semantics, deterministic display and receipt contracts | Updated for THS-0041/0042/0043/0051 |
-| ARCHITECTURE | simulated latch ordering, durable authority boundary, isolated adapter attempts, process-local state, in-memory PNG exercise | Updated for Wave 5 |
-| PRIVACY | allowlisted synthetic receipt fields, no credential/digest rendering, explicit private write-only sink, no public runtime artifacts | Updated for Wave 5 |
+| SPEC-NODE + SPEC-THS | THS-0022 fixed geometry schema/algorithm and THS-0023 exact declarative review, strict synthetic materialization, local atomicity/failure doctrine | Updated for THS-0022/0023 |
+| ARCHITECTURE | caller-supplied proposal digest → explicit order → geometry binding → explicit review → synthetic revision CAS; server remains seed-backed | Updated for Wave 6 |
+| PRIVACY | geometry/review/receipt/housefile artifacts stay local; hashes can fingerprint layouts; explicit choices prevent model policy assignment | Updated for Wave 6 |
 | AURORA-EASTER-EGG | honest public Aurora framework signature | Replaced leak concept |
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0041/0042/0043 capabilities and THS-0051 integration proof marked done with simulated-only evidence; hardware/demo blockers retained | Updated for Wave 5 |
-| BUILD-WEEK | synthetic appliance proof separated from physical hardware, provider evaluation, geometry/materialization, and console work | Updated for Wave 5 |
-| DEMO-SCRIPT | owner-authenticated simulated trip/re-arm flow, TRIPPED state, suspended non-restoration, and software-only timing language | Updated for Wave 5 |
+| KANBAN | THS-0022/0023 complete; THS-0012 hardened; THS-0050 owner-auth and THS-0060 conditional-hardware dependencies corrected | Updated for Wave 6 |
+| BUILD-WEEK | provider-free fixed geometry and synthetic materialization proof separated from live model, real dwelling, console, and hardware work | Updated for Wave 6 |
+| DEMO-SCRIPT | runnable synthetic geometry/materialization proof and explicit no-survey/no-live-API/no-real-house language | Updated for Wave 6 |
 | Config example | exact `ESP32_SERIAL=SIMULATED` plus demo-mode requirement for simulated control routes | Updated for Wave 5 |
-| PUBLICATION-CHECKLIST | runtime receipt scan boundary and explicit no-device/no-physical-timing/no-certification claims | Updated for Wave 5 |
-| Delivery records | F016/F017/F018 feature and QA mapping; THS-0051 recorded only as integration proof | Updated for Wave 5 |
+| PUBLICATION-CHECKLIST | exact allowed fixed-grid/local-CAS claims and prohibited inferred/real/automatic/tamper/live-server claims | Updated for Wave 6 |
+| Delivery records | F019/F020 feature and QA mapping; Wave 6 remains synthetic-only and standalone | Updated for Wave 6 |
 
-PR #3 is merged at `a109b4d`, and Wave 4 is available on its separately authorized draft PR.
-Wave 5 is prepared locally on `agent/wave5-sim-appliance` for a separate stacked draft PR.
-These records reflect only the local gate; they do not claim draft-PR checks, review, merge,
-deployment, provider evaluation, physical hardware operation, physical stop/latency, or
-submission readiness.
+PR #3 is merged at `a109b4d`; draft PR #4 contains Wave 4 and stacked draft PR #5 contains
+Wave 5. Wave 6 is prepared on `agent/wave6-geometry-materialization` for a separate stacked
+draft PR. These records reflect only the local gate; they do not claim draft-PR checks,
+review, merge, deployment, provider evaluation, real-dwelling materialization, physical
+hardware operation, physical stop/latency, or submission readiness.

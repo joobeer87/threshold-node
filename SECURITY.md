@@ -42,6 +42,17 @@ No version is security-supported yet. The `0.1.x` line is a Build Week prototype
   allowlisted. Use only the explicit private write-once sink, and never force-add its output.
 - The GPT-5.6 adapter has provider-free contract evidence only. Do not claim live quality,
   latency, token use, or cost until a reviewed synthetic provider evaluation exists.
+- Use THS-0022/0023 only with unmistakably synthetic inputs and private temporary canonical
+  targets. Geometry is a fixed ordered sketch, not inferred or measured floor-plan data;
+  it must never assign access, no-go, or outdoor policy.
+- Materialization must fail closed on a changed geometry/proposal digest, missing or
+  duplicate owner choice, stale revision, unsafe path, invalid schema, lock failure, or
+  failed write/sync. Its lock and compare-and-swap protect one local filesystem target;
+  they are not distributed coordination, tamper evidence, or crash-proof storage.
+- Treat `owner_reviewed:true` and `synthetic_fixture:true` as declarative workflow gates,
+  not owner authentication or proof that arbitrary supplied data is fictional. The running
+  API does not load materialized output, and real-house or automatic materialization is
+  prohibited pending separate review.
 - Run `make check` against the exact staged tree before any push.
 - Do not represent `simulated_software_path_only` timing as a physical stop measurement.
   No current proof covers an NC loop, ESP32, serial transport, OLED, printer, configured
