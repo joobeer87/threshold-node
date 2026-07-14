@@ -8,21 +8,21 @@
 | SECURITY.md | owner snapshot sensitivity, exact-origin/no-wildcard policy, memory-only tokens, exact-lockfile install, visual/safety nonclaims | Updated for Wave 7 |
 | HARDWARE.md | simulated interlock/display/receipt boundaries versus untested NC loop, ESP32, OLED, printer, and physical timing | Updated for Wave 5 |
 | SPEC-NODE + SPEC-THS | owner snapshot/status contract and console behavior added to SPEC-NODE; THS schema is unchanged | Updated for THS-0050 |
-| ARCHITECTURE | Vite loopback proxy → exact-origin owner API → credential-free projections; token and pending visual-review boundaries | Updated for Wave 7 |
+| ARCHITECTURE | Vite loopback proxy → exact-origin owner API → credential-free projections; token and completed visual-review boundaries | Updated for Wave 7 closeout |
 | PRIVACY | snapshots remain private; token/browser-storage/screenshot restrictions; local-origin limitations and threat nonclaims | Updated for Wave 7 |
 | AURORA-EASTER-EGG | honest public Aurora framework signature | Replaced leak concept |
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0050 complete with automated proof; delivery remains WARN pending final human recheck of visual fixes; THS-0024 records the separate Vault-gated live-eval wave | Updated for Wave 7 visual remediation |
-| Console design contract | Reference-derived tokens, perceptible loading dwell, distinct semantic colors, contained blueprint labels, responsive layout, interaction, accessibility, credential, and visual-recheck boundaries | Updated for Wave 7 visual remediation |
-| BUILD-WEEK | implemented owner API/console proof separated from visual approval, deployment, real dwelling, provider, and hardware claims | Updated for Wave 7 |
-| DEMO-SCRIPT | loopback console run path, safe token handling, shown states, and human visual-review hold | Updated for Wave 7 |
+| KANBAN | THS-0050 complete with automated proof and accepted visual recheck; THS-0024 records the separate Vault-gated live-eval wave | Updated for Wave 7 closeout |
+| Console design contract | Reference-derived tokens, perceptible loading dwell, distinct semantic colors, contained blueprint labels, responsive layout, interaction, accessibility, credential, and visual-review boundaries | Updated for Wave 7 closeout |
+| BUILD-WEEK | implemented owner API/console proof with accepted visual review, separated from deployment, real dwelling, provider, and hardware claims | Updated for Wave 7 closeout |
+| DEMO-SCRIPT | loopback console run path, safe token handling, shown states, accepted human visual recheck, and footage boundaries | Updated for Wave 7 closeout |
 | Config example | exact `ESP32_SERIAL=SIMULATED` plus demo-mode requirement for simulated control routes | Updated for Wave 5 |
-| PUBLICATION-CHECKLIST | exact owner-console claims, pinned dependency/public-tree gates, private snapshot and visual-review nonclaims | Updated for Wave 7 |
-| Delivery records | F007 feature/QA mapping; console gate remains WARN pending final human visual recheck | Updated for Wave 7 visual remediation |
+| PUBLICATION-CHECKLIST | exact owner-console claims, pinned dependency/public-tree gates, private snapshot boundaries, and completed visual-review evidence | Updated for Wave 7 closeout |
+| Delivery records | F007 feature/QA mapping; implemented loopback-console gate is PASS after owner visual acceptance | Updated for Wave 7 closeout |
 
 Wave 7 is prepared on `agent/wave7-owner-console` as a separately reviewable change. These
-records reflect the local automated gate and a changes-requested human pass; they do not claim final visual approval,
-PR review/merge, deployment, provider evaluation, real-dwelling materialization, physical
-hardware operation, physical stop/latency, or submission readiness.
+records reflect the local automated gate and the owner's accepted corrected visual review;
+they do not claim PR merge, deployment, provider evaluation, real-dwelling materialization,
+physical hardware operation, physical stop/latency, or submission readiness.

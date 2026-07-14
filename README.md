@@ -17,8 +17,8 @@ capabilities granted to a caller, refuses no-go actions, and records access deci
 > credential-free housefile, grant, interlock, and bounded-ledger views plus grant
 > issue/revoke controls. Live model quality has not been evaluated, and real-dwelling
 > materialization, live loading of materialized housefiles, robot adapters, ESP32/NC-loop
-> input, OLED/printer output, and physical stopping are not implemented. Human visual
-> review of the console is still pending.
+> input, OLED/printer output, and physical stopping are not implemented. The owner accepted
+> the corrected console visual review on 2026-07-14.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -115,9 +115,10 @@ demo-proven. The geometry/materialization proof uses only unmistakably synthetic
 fixtures, does not make model-quality claims, and is not wired into the live API. The
 simulated appliance proof likewise proves no physical hardware behavior. The console has
 automated backend contract, frontend interaction, type/build, and accessibility coverage,
-and its first human visual pass is complete. The delivery gate remains `warn` pending a
-final recheck of the resulting loading-duration, color-separation, and label-containment
-corrections.
+and its final human visual recheck is complete. The accepted recheck covered the loading
+dwell, gold/crimson semantic separation, and blueprint label containment. The implemented
+loopback-console delivery gate is `pass`; this is not broad browser/device validation and
+does not make the broader prototype deployed, submission-ready, or physically proven.
 A read-only review found a reusable AuroraOS local-Vault runner pattern, but there is no
 Threshold-specific approved credential injector. Building that narrow runner and approving
 its Vault path/read and one direct Responses call remain a separate operator-gated wave;

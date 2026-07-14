@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "task": "wave7_owner_console",
-  "authority": "L2_local_plus_user_authorized_exact_pinned_console_dependencies_and_draft_pr_publication",
-  "delivery_gate": "warn_pending_human_visual_recheck",
+  "authority": "L2_local_plus_user_authorized_exact_pinned_console_dependencies_and_pr_publication",
+  "delivery_gate": "pass_loopback_pre_alpha_scope",
   "impacted_features": [
     "THS-F002",
     "THS-F005",
@@ -19,7 +19,7 @@
     "frontend_accessibility_scan": "pass_auth_blueprint_tripped_issue_and_ledger_surfaces",
     "exact_pinned_lockfile": "present",
     "public_tree_scan": "pass_111_files_zero_findings",
-    "human_visual_review": "changes_requested_fixes_implemented_pending_recheck",
+    "human_visual_review": "pass_owner_accepted_corrected_loading_color_and_label_containment_2026_07_14",
     "physical_hardware_test": "not_run",
     "real_dwelling_console_use": "not_run_prohibited",
     "live_synthetic_provider_eval": "not_run"
@@ -28,11 +28,11 @@
   "feature_index": "docs/delivery/FEATURE_INDEX.md",
   "qa_matrix": "docs/delivery/QA_MATRIX.md",
   "human_leverage": {
-    "status": "warn",
-    "summary": "The loopback console makes the synthetic housefile, public grant lifecycle, bounded ledger, and simulated interlock state reviewable through one owner-authenticated UI; the first human pass found three visual defects, their fixes are implemented, and final recheck is pending."
+    "status": "pass",
+    "summary": "The loopback console makes the synthetic housefile, public grant lifecycle, bounded ledger, and simulated interlock state reviewable through one owner-authenticated UI; the first human pass found three visual defects, their fixes were implemented, and the owner accepted the corrected loading duration, semantic color separation, and blueprint label containment on 2026-07-14."
   },
   "blocked_claims": [
-    "final human visual recheck or submission-ready polish",
+    "submission-ready polish",
     "browser storage, URL, cookie, screenshot, log, or build-artifact persistence of owner or grant credentials",
     "wildcard CORS or authorization of a foreign browser origin",
     "public, LAN, hosted, or production deployment",
@@ -42,7 +42,7 @@
     "robot command relay, device motion, physical hardware stop, or certified safety",
     "merge or submission readiness"
   ],
-  "hosted_mutation_scope": "user_authorized_draft_pr_7_published_unmerged",
+  "hosted_mutation_scope": "user_authorized_pr_7_publication_ready_for_review_unmerged",
   "secret_material_returned": false,
   "live_provider_request_performed": false,
   "hosted_or_provider_mutation_recorded": true,

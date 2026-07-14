@@ -89,7 +89,7 @@ receipt, digest, and housefile artifacts stay private. Proposal confirmation doe
 the materializer, the API does not serve its output, and real-dwelling materialization is
 not permitted by this proof.
 
-## Runnable now — synthetic owner console, visual recheck pending
+## Runnable now — synthetic owner console, human visual recheck complete
 
 Run the node on its default loopback address, then install exactly from the committed
 lockfile and start the fixed Vite development origin:
@@ -111,8 +111,9 @@ and truthful simulated ARMED/TRIPPED states. A new-grant credential is sent once
 header, cleared from the page, and never returned. The TRIPPED panel states that timing is
 software-only and no physical stop is verified. The automated backend/frontend contracts,
 build/type checks, and accessibility scan are evidence for behavior, not visual polish.
-Keep console footage in the target sequence until a human has confirmed the corrected
-loading duration, semantic colors, and blueprint label containment.
+The owner confirmed the corrected loading duration, semantic colors, and blueprint label
+containment on 2026-07-14. Console footage still has to follow the credential, synthetic
+data, and evidence boundaries below.
 
 ## Target submission sequence — 75 seconds
 

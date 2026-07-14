@@ -37,5 +37,7 @@ API.
 
 ## Evidence boundary
 
-Automated DOM/accessibility checks and deterministic builds are required. Human desktop and
-mobile visual review remains required before this console can be called visually approved.
+Automated DOM/accessibility checks and deterministic builds are required. Human visual
+review remains a separate gate; the owner accepted the corrected loading duration, semantic
+color separation, and blueprint label containment on 2026-07-14. Future visual changes
+require a new review.

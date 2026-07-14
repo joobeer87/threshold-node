@@ -45,8 +45,9 @@ access, and the video limit before making the final choice.
    that durably suspends grants. A Jetson-connected I/O rig and physical stop control remain
    future evidence and must not be inferred from the simulation.
 6. The loopback owner console renders the synthetic blueprint, public grant projections,
-   bounded ledger, and prominent simulated `TRIPPED` state, with grant issue/revoke. Human
-   visual review is still required before using it in submission footage.
+   bounded ledger, and prominent simulated `TRIPPED` state, with grant issue/revoke. The
+   owner accepted the corrected visual review on 2026-07-14; footage still requires the
+   separate privacy and evidence checks.
 
 The memorable object should be the physical threshold: the model may propose, but it
 cannot bypass deterministic validation, owner confirmation, or the permission gate.
@@ -109,9 +110,9 @@ state. The React console covers locked/loading/error/retry/ready states, bluepri
 issue/revoke, ledger, and simulated `TRIPPED` handling. The owner and new-grant tokens stay
 in page memory and headers only. Owner routes permit same-origin, origin-less clients, or
 exactly `http://127.0.0.1:5173`; there is no wildcard CORS. Automated backend/frontend
-contract, interaction, build/type, and accessibility checks are present; human visual
-changes-requested fixes are implemented but remain pending final recheck, so console
-delivery is still `warn`.
+contract, interaction, build/type, and accessibility checks are present. The owner accepted
+the corrected loading duration, semantic colors, and label containment on 2026-07-14, so
+the implemented loopback-console delivery gate is `pass`.
 
 The GPT-5.6 request adapter, strict proposal validator, and digest-bound owner decision are
 implemented and provider-free tested. A live synthetic model quality, cost, latency, and
@@ -124,8 +125,8 @@ headless Codex is not a substitute for that transport. THS-0022 now emits a cano
 digest-bound fixed geometry from explicit order. THS-0023 validates an exact explicit review
 and atomically advances an unmistakably synthetic temporary housefile under local revision
 compare-and-swap. That proof is not observed geometry, a real-house workflow, or live server
-state. Real-dwelling materialization review, human console visual review, robot adapters,
-hardware bridge, and the complete submission demo still need to be completed. The
+state. Real-dwelling materialization review, robot adapters, hardware bridge, and the
+complete submission demo still need to be completed. The
 repository should only claim a capability after its code and demo evidence exist.
 
 Real-room footage can make the video stronger, but the source and normalized capture batch

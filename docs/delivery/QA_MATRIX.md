@@ -8,7 +8,7 @@
 | THS-F004 | `test_public_release_check.py`: synthetic fixture validation and fail-closed tracked runtime-data, ledger, capture, and receipt rejection | Pass |
 | THS-F005 | `test_ledger.py`: append/fsync, exact checkpoints, changed-tail refusal, witnesses, private-path checks, bounded reads; ESTOP commit coverage in grant-authority/API tests | Pass |
 | THS-F006 | `test_vision_proposals.py`: batch binding, request shape, strict validation, private persistence, owner decision, no canonical write | Pass provider-free; live eval pending |
-| THS-F007 | `test_api_server.py`: owner auth, canonical credential-free snapshot/status, bounded ledger, exact origin/preflight policy, TRIPPED state; `console/src/*.test.*`: token non-persistence, forbidden-field rejection, bounded error/retry, 700ms loading dwell, deterministic blueprint wrap/clip containment, issue/revoke refresh, TRIPPED, and axe scans across auth, blueprint, TRIPPED, issue, and ledger surfaces | Pass locally; final human visual recheck pending |
+| THS-F007 | `test_api_server.py`: owner auth, canonical credential-free snapshot/status, bounded ledger, exact origin/preflight policy, TRIPPED state; `console/src/*.test.*`: token non-persistence, forbidden-field rejection, bounded error/retry, 700ms loading dwell, deterministic blueprint wrap/clip containment, issue/revoke refresh, TRIPPED, and axe scans across auth, blueprint, TRIPPED, issue, and ledger surfaces | Pass locally; corrected visual behavior owner-accepted 2026-07-14 |
 | THS-F009 | public-safe signature assertions in `test_api_server.py` | Pass |
 | THS-F010 | forbidden real-video test + media ignore policy | Pass |
 | THS-F011 | `test_grant_manager.py`; API durable expiry/window/digest/revoke/suspension tests; re-arm leaves grants suspended | Pass |
@@ -30,7 +30,7 @@
 | Public-tree scan | Scanner covers tracked runtime data, console artifacts, and receipts without reflecting paths or contents | Pass locally, 0 findings |
 | Capture force-track guard | scanner rejects files under `data/capture/` without reflecting paths or contents | Pass locally |
 | Receipt force-track guard | scanner rejects files under `data/receipts/` without reflecting paths or contents | Pass locally |
-| Python 3.10/3.12 CI | PR #7 run 29 passed at the prior head; latest visual-fix head requires its post-push run | Pending latest-head check |
+| Python 3.10/3.12 CI | GitHub Actions is required on every pushed PR head; the visual-fix head passed and the metadata-only closeout head must pass before the ready-for-review transition | Pass required before transition; PR status is authoritative |
 | Hardware | physical stop, adapter/device halt, NC loop, ESP32/OLED/printer, physical latency, and certification bench proof | Not run; do not claim |
 | GPT-5.6 request contract | fixed Responses endpoint/model, multi-image data URLs, `detail:high`, `store:false`, strict `text.format`, no tools | Pass with fake transport |
 | GPT-5.6 live synthetic eval | response quality, cost, latency, token use | Not run: read-only review found a reusable AuroraOS pattern, but no Threshold-specific approved injector exists; THS-0024 keeps Vault/provider execution in a separate operator-gated wave; do not claim |
@@ -38,8 +38,8 @@
 
 The earlier trust, simulated-appliance, and geometry/materialization proofs remain green.
 Wave 7 adds only a loopback owner API/console over the running server's current housefile;
-it does not make materialized output live. Delivery remains at `warn` because the corrected
-visuals need final human recheck, while a live synthetic model evaluation, real-dwelling
-review, and later hardware/adapter proof are incomplete. Model/spatial inference, automatic
-materialization, command relay, physical hardware, deployment, and full-demo claims stay
-blocked.
+it does not make materialized output live. The implemented loopback-console delivery gate
+is `pass` after the corrected visual review; a live synthetic model evaluation,
+real-dwelling review, and later hardware/adapter proof remain incomplete. Model/spatial
+inference, automatic materialization, command relay, physical hardware, deployment, and
+full-demo claims stay blocked.

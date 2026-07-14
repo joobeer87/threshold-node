@@ -10,10 +10,10 @@ digest-bound geometry and a separate synthetic-only reviewed materializer are im
 as standalone local boundaries; they are not the source used by the running API. Live model
 evaluation, real-dwelling materialization, adapters, and physical hardware remain
 incomplete. The owner-authenticated snapshot/status API and exact-pinned
-React/Vite/TypeScript console are implemented for loopback use; automated checks pass but
-the visual changes-requested corrections remain pending final human recheck. The simulated
-appliance adds a process-local latched stop coordinator, deterministic terminal frames, and
-a synthetic PNG receipt fallback; it proves only the software path.
+React/Vite/TypeScript console are implemented for loopback use; automated checks pass and
+the visual changes-requested corrections passed final owner recheck on 2026-07-14. The
+simulated appliance adds a process-local latched stop coordinator, deterministic terminal
+frames, and a synthetic PNG receipt fallback; it proves only the software path.
 
 ```
  owner console :5173 ── /api proxy ──► owner routes :8471
@@ -82,8 +82,8 @@ credentials to browser storage, cookies, URLs, logs, screenshots, or build artif
 Blueprint, public grant issue/revoke, bounded ledger, loading/error/retry, and simulated
 `TRIPPED` states are implemented. Package versions are
 exactly pinned in `package.json` and the committed npm lockfile. Automated behavior,
-contract, type/build, and accessibility checks do not replace the pending human visual
-recheck of corrected visual behavior.
+contract, type/build, and accessibility checks remain separate from the completed owner
+visual recheck of corrected behavior.
 
 `GrantAuthority` is the only integrated owner of usable grant state. The private envelope
 contains complete bounded metadata and credential digests, never raw bearer values. Grant
