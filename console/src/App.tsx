@@ -29,6 +29,8 @@ import type { GrantIssuePayload, OwnerSnapshot, PublicGrant } from "./types";
 type Tab = "blueprint" | "grants" | "ledger";
 type Phase = "locked" | "loading" | "ready" | "error";
 
+export const MINIMUM_LOADING_VISIBLE_MS = 700;
+
 const SCOPE_OPTIONS = [
   ["read:layout", "Layout"],
   ["read:systems", "Systems"],
@@ -50,6 +52,21 @@ function messageFor(error: unknown): string {
   return error instanceof ApiError
     ? error.message
     : "The owner console could not complete the request.";
+}
+
+function waitForLoadingVisibility(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let timeout = 0;
+    const finish = () => {
+      window.clearTimeout(timeout);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+    timeout = window.setTimeout(finish, MINIMUM_LOADING_VISIBLE_MS);
+    signal.addEventListener("abort", finish, { once: true });
+  });
 }
 
 function StatusChip({ value }: { value: string }) {
@@ -135,13 +152,16 @@ export function App() {
     setError("");
     setSnapshot(null);
     setPhase("loading");
+    const loadingVisible = waitForLoadingVisibility(controller.signal);
     try {
       const next = await fetchSnapshot(token, controller.signal);
+      await loadingVisible;
       if (!requestIsCurrent(generation)) return false;
       setSnapshot(next);
       setPhase("ready");
       return true;
     } catch (loadError) {
+      await loadingVisible;
       if (!requestIsCurrent(generation)) return false;
       setSnapshot(null);
       setError(messageFor(loadError));
@@ -187,15 +207,18 @@ export function App() {
     setSnapshot(null);
     setPhase("loading");
     setActionBusy(true);
+    const loadingVisible = waitForLoadingVisibility(controller.signal);
     try {
       await action(controller.signal);
       if (!requestIsCurrent(generation)) return false;
       const next = await fetchSnapshot(ownerToken, controller.signal);
+      await loadingVisible;
       if (!requestIsCurrent(generation)) return false;
       setSnapshot(next);
       setPhase("ready");
       return true;
     } catch (actionError) {
+      await loadingVisible;
       if (!requestIsCurrent(generation)) return false;
       setSnapshot(null);
       setError(`Node state is unknown until a fresh owner snapshot succeeds. ${messageFor(actionError)}`);
@@ -279,7 +302,13 @@ export function App() {
   if (!snapshot) {
     return (
       <main className="auth-layout">
-        <section className="auth-card" aria-live="polite">
+        <section
+          className="auth-card"
+          aria-atomic="true"
+          aria-busy={phase === "loading"}
+          aria-live="polite"
+          role={phase === "loading" ? "status" : undefined}
+        >
           {phase === "loading" ? (
             <>
               <RefreshCw className="spin large-icon" aria-hidden="true" />

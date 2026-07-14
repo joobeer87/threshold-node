@@ -14,15 +14,15 @@
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0050 complete with automated proof; delivery remains WARN pending human visual review; THS-0024 records the separate Vault-gated live-eval wave | Updated for Wave 7 |
-| Console design contract | Reference-derived tokens, responsive layout, interaction, accessibility, credential, and pending visual-review boundaries | Added for Wave 7 |
+| KANBAN | THS-0050 complete with automated proof; delivery remains WARN pending final human recheck of visual fixes; THS-0024 records the separate Vault-gated live-eval wave | Updated for Wave 7 visual remediation |
+| Console design contract | Reference-derived tokens, perceptible loading dwell, distinct semantic colors, contained blueprint labels, responsive layout, interaction, accessibility, credential, and visual-recheck boundaries | Updated for Wave 7 visual remediation |
 | BUILD-WEEK | implemented owner API/console proof separated from visual approval, deployment, real dwelling, provider, and hardware claims | Updated for Wave 7 |
 | DEMO-SCRIPT | loopback console run path, safe token handling, shown states, and human visual-review hold | Updated for Wave 7 |
 | Config example | exact `ESP32_SERIAL=SIMULATED` plus demo-mode requirement for simulated control routes | Updated for Wave 5 |
 | PUBLICATION-CHECKLIST | exact owner-console claims, pinned dependency/public-tree gates, private snapshot and visual-review nonclaims | Updated for Wave 7 |
-| Delivery records | F007 feature/QA mapping; console gate remains WARN pending human visual review | Updated for Wave 7 |
+| Delivery records | F007 feature/QA mapping; console gate remains WARN pending final human visual recheck | Updated for Wave 7 visual remediation |
 
 Wave 7 is prepared on `agent/wave7-owner-console` as a separately reviewable change. These
-records reflect only the local automated gate; they do not claim human visual approval,
+records reflect the local automated gate and a changes-requested human pass; they do not claim final visual approval,
 PR review/merge, deployment, provider evaluation, real-dwelling materialization, physical
 hardware operation, physical stop/latency, or submission readiness.

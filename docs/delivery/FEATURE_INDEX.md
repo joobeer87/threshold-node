@@ -8,7 +8,7 @@
 | THS-F004 | Public-release hygiene | Synthetic fixtures, ignore rules, and fail-closed scans for tracked runtime data, ledgers, capture inputs, and receipts | Runnable |
 | THS-F005 | Persistent append-only ledger | JSONL append+fsync, bounded reads, allowlisted fields, prepared checkpoints, exact receipt witnesses, and durable ESTOP events | Runnable local durability |
 | THS-F006 | GPT-5.6 observation proposal | Merged provider-free adapter, strict validator, private artifact, digest-bound owner decision; live eval pending | Runnable provider-free; not demo-proven |
-| THS-F007 | Owner console | Owner-auth snapshot/status API; credential-free housefile/grant/interlock/bounded-ledger projections; exact-origin React/Vite/TypeScript blueprint, issue/revoke, loading/error/retry, and TRIPPED UI; exact-pinned lockfile | Runnable loopback pre-alpha; automated proof complete, human visual review pending |
+| THS-F007 | Owner console | Owner-auth snapshot/status API; credential-free housefile/grant/interlock/bounded-ledger projections; exact-origin React/Vite/TypeScript blueprint, issue/revoke, perceptible loading/error/retry, contained labels, and TRIPPED UI; exact-pinned lockfile | Runnable loopback pre-alpha; visual fixes implemented, final human recheck pending |
 | THS-F008 | Prototype physical stop loop | Hardware plan only | Planned |
 | THS-F009 | Aurora public signature | Hidden static route + safety test | Runnable |
 | THS-F010 | Real-footage privacy workflow | Checklist + Git/scanner boundary | Runnable |
@@ -35,6 +35,7 @@ reads the server's current housefile through owner-authenticated projections; it
 load THS-0023 output. Owner/new-grant tokens stay in page memory and headers only, owner
 routes accept no Origin, exact same-origin, or exactly `http://127.0.0.1:5173`, and no
 wildcard CORS is emitted. Automated backend/frontend contract, interaction, build/type, and
-accessibility proof is present. Delivery remains `warn` pending human visual review. A live
+accessibility proof is present. Delivery remains `warn` pending final human recheck of the
+changes-requested visual fixes. A live
 synthetic GPT-5.6 quality/cost/latency evaluation and real-dwelling workflow are still not
 run.

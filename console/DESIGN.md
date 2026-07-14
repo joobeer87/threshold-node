@@ -9,8 +9,9 @@ API.
 - Canvas `#081827`; raised surface `#0F2438`; soft surface `#132D44`.
 - Primary text `#EEF8FF`; blueprint line `#9FC4DC`; strong line `#C9E5F5`;
   secondary text `#99B8CA`.
-- Restricted/windowed state `#FFB454`; deny/TRIPPED state `#FF7A59`; armed/active
-  state `#6FE0B8`.
+- Restricted/windowed state uses distinct gold `#FFD166`; deny/TRIPPED state uses
+  crimson `#FF5C70`; armed/active state uses `#6FE0B8`. Gold and crimson retain
+  respective 12.44:1 and 6.00:1 contrast against the `#081827` blueprint canvas.
 - Spacing follows a 4px base with 12/16/24/40px section rhythms. Corners stay nearly
   square (2px) to retain the plotted-instrument character.
 - Narrow system display faces title blocks; system UI serves body text; monospace identifies
@@ -26,6 +27,10 @@ API.
 - A verified TRIPPED snapshot uses a persistent high-contrast alert. Refresh and mutation
   immediately hide the stale snapshot behind a state-unknown loading surface until a fresh
   backend snapshot reports the authoritative state.
+- The verification surface remains visible for at least 700ms so a fast loopback response
+  cannot reduce owner feedback to an imperceptible flash.
+- Blueprint zone names and state labels wrap to at most two deterministic lines and are
+  clipped to the owning rectangle as a final containment boundary.
 - Layouts must fit at 320px without horizontal page overflow; only the bounded ledger table
   may scroll within its own region.
 - Motion is limited to progress rotation and is disabled by `prefers-reduced-motion`.

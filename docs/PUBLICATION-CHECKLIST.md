@@ -95,7 +95,7 @@ checks do not substitute for the required human visual review.
 Do not claim an NC loop, ESP32/serial bridge, OLED, printer, configured adapter invocation,
 device movement/stop, physical stop timing, or certified-safety result. Those remain later
 hardware/adapter proof gates. The live synthetic GPT-5.6 evaluation, real-dwelling
-materialization review, and human owner-console visual review also remain outstanding.
+materialization review, and final human owner-console visual recheck also remain outstanding.
 
 ## After a public push
 

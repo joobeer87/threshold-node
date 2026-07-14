@@ -110,7 +110,8 @@ issue/revoke, ledger, and simulated `TRIPPED` handling. The owner and new-grant 
 in page memory and headers only. Owner routes permit same-origin, origin-less clients, or
 exactly `http://127.0.0.1:5173`; there is no wildcard CORS. Automated backend/frontend
 contract, interaction, build/type, and accessibility checks are present; human visual
-review remains pending, so console delivery is still `warn`.
+changes-requested fixes are implemented but remain pending final recheck, so console
+delivery is still `warn`.
 
 The GPT-5.6 request adapter, strict proposal validator, and digest-bound owner decision are
 implemented and provider-free tested. A live synthetic model quality, cost, latency, and

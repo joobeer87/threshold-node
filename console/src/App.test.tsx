@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "./App";
+import { App, MINIMUM_LOADING_VISIBLE_MS } from "./App";
 import type { OwnerSnapshot } from "./types";
 
 const OWNER_VALUE = "owner-console-test-token-000000000001";
@@ -110,6 +110,28 @@ describe("owner console", () => {
     expect(localStorageSpy).not.toHaveBeenCalled();
   });
 
+  it("keeps an immediate successful verification visibly on screen", async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockImplementationOnce(() => response(SNAPSHOT));
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Owner token"), {
+      target: { value: OWNER_VALUE },
+    });
+    fireEvent.submit(screen.getByLabelText("Owner token").closest("form")!);
+
+    expect(screen.getByRole("heading", { name: "Verifying local state" })).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MINIMUM_LOADING_VISIBLE_MS - 1);
+    });
+    expect(screen.getByRole("heading", { name: "Verifying local state" })).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByText("Threshold Demo House (Synthetic)")).toBeInTheDocument();
+  });
+
   it("shows a bounded error and retries without reflecting transport details", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockRejectedValueOnce(new Error(`network ${OWNER_VALUE}`));
@@ -175,6 +197,7 @@ describe("owner console", () => {
     const user = userEvent.setup();
     render(<App />);
     await connect(user);
+    await screen.findByText("Threshold Demo House (Synthetic)");
 
     await user.click(screen.getByRole("button", { name: "Grants" }));
     await user.click(screen.getByRole("button", { name: "Issue grant" }));
@@ -203,6 +226,7 @@ describe("owner console", () => {
     const user = userEvent.setup();
     render(<App />);
     await connect(user);
+    await screen.findByText("Threshold Demo House (Synthetic)");
 
     await user.click(screen.getByRole("button", { name: "Grants" }));
     await user.click(screen.getByRole("button", { name: "Revoke grant" }));
@@ -226,6 +250,7 @@ describe("owner console", () => {
     const user = userEvent.setup();
     render(<App />);
     await connect(user);
+    await screen.findByText("Threshold Demo House (Synthetic)");
 
     await user.click(screen.getByRole("button", { name: "Grants" }));
     await user.click(screen.getByRole("button", { name: "Revoke grant" }));
@@ -248,6 +273,7 @@ describe("owner console", () => {
     const user = userEvent.setup();
     render(<App />);
     await connect(user);
+    await screen.findByText("Threshold Demo House (Synthetic)");
 
     await user.click(screen.getByRole("button", { name: "Grants" }));
     await user.click(screen.getByRole("button", { name: "Revoke grant" }));

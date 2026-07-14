@@ -10,9 +10,9 @@
   --line-strong: #c9e5f5;
   --dim: #99b8ca;
   --faint: rgba(159, 196, 220, 0.16);
-  --amber: #ffb454;
-  --alert: #ff7a59;
-  --alert-dark: #4b1f1b;
+  --amber: #ffd166;
+  --alert: #ff5c70;
+  --alert-dark: #4a1521;
   --ok: #6fe0b8;
   --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --display: "Arial Narrow", "Aptos Narrow", Impact, sans-serif;
@@ -141,9 +141,9 @@ input, select {
 .primary-button:hover:not(:disabled) { background: var(--ink); }
 .secondary-button { border-color: var(--line); background: transparent; color: var(--line-strong); }
 .secondary-button:hover:not(:disabled) { background: var(--faint); color: var(--ink); }
-.danger-button { border-color: var(--alert); background: transparent; color: #ffad99; }
+.danger-button { border-color: var(--alert); background: transparent; color: #ff9aaa; }
 .danger-button:hover:not(:disabled) { background: var(--alert-dark); color: var(--ink); }
-.light-button { border-color: var(--ink); background: var(--ink); color: #40120c; }
+.light-button { border-color: var(--ink); background: var(--ink); color: #2b0b12; }
 .compact { min-height: 2.75rem; padding: 0.55rem 0.8rem; }
 .icon-button { display: grid; width: 2.75rem; padding: 0; place-items: center; border-color: var(--line); background: transparent; color: var(--line-strong); }
 .button-row { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.25rem; }
@@ -188,9 +188,9 @@ input, select {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
-  border: 2px solid #ffb29f;
+  border: 2px solid #ffd3da;
   background: var(--alert);
-  color: #32100c;
+  color: #2b0b12;
 }
 .trip-banner > svg { width: 1.6rem; height: 1.6rem; }
 .trip-banner strong { display: block; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
@@ -347,7 +347,7 @@ th { color: var(--line-strong); font-family: var(--mono); font-size: 0.7rem; let
 td { font-size: 0.85rem; line-height: 1.45; }
 td:first-child { min-width: 13rem; color: var(--dim); font-size: 0.72rem; }
 .event-chip { padding: 0.35rem 0.5rem; color: var(--line-strong); }
-.event-deny, .event-estop { border-color: var(--alert); color: #ffad99; }
+.event-deny, .event-estop { border-color: var(--alert); color: #ff9aaa; }
 .event-grant, .event-read { border-color: var(--ok); color: var(--ok); }
 .event-revoke { border-color: var(--amber); color: var(--amber); }
 .empty-state { margin: 0; padding: 1.5rem; color: var(--dim); text-align: center; }

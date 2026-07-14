@@ -115,7 +115,9 @@ demo-proven. The geometry/materialization proof uses only unmistakably synthetic
 fixtures, does not make model-quality claims, and is not wired into the live API. The
 simulated appliance proof likewise proves no physical hardware behavior. The console has
 automated backend contract, frontend interaction, type/build, and accessibility coverage,
-but its delivery gate remains `warn` until a human visual review is complete.
+and its first human visual pass is complete. The delivery gate remains `warn` pending a
+final recheck of the resulting loading-duration, color-separation, and label-containment
+corrections.
 A read-only review found a reusable AuroraOS local-Vault runner pattern, but there is no
 Threshold-specific approved credential injector. Building that narrow runner and approving
 its Vault path/read and one direct Responses call remain a separate operator-gated wave;
