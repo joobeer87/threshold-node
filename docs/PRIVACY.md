@@ -16,6 +16,9 @@ real household. The public repository therefore ships only fictional data.
 ## What stays local
 
 - Populated environment files and bearer tokens.
+- Owner-console snapshots, screenshots, recordings, browser diagnostics, and network
+  captures. A credential-free response still contains a complete owner view of the current
+  housefile and bounded activity history.
 - The private digest-only grant metadata store. Credential digests are still sensitive
   authentication material even though raw grant credentials are never persisted.
 - Real housefiles, room names, schedules, maps, inventory, quirks, and system details.
@@ -56,6 +59,28 @@ context, so they remain part of the private canonical housefile. The command gat
 one UTC instant, converts it to that policy timezone, and denies commands during the local
 window. A malformed schedule or unresolvable timezone fails the command closed; scoped
 reads remain governed by the ordinary grant and disclosure policy.
+
+## Owner-console boundary
+
+The console is a loopback owner surface, not a public status page. Its
+`GET /owner/snapshot` response intentionally includes the full current server housefile,
+public grant projections, bounded newest-first ledger events, and health/interlock/display
+state. `GET /owner/status` returns only bounded state and the active-grant count. Neither
+schema can contain raw credentials or credential digests, but names, geometry, policies,
+grant scopes, schedules, and activity events remain private household context.
+
+The owner token and the distinct new-grant token live only in React component state. They
+are sent only in request headers, never in URLs, response bodies, browser storage, cookies,
+or build artifacts. The issue field is cleared after the request is formed, and Lock or a
+page reload clears the owner token. Operators must also keep tokens out of screenshots,
+recordings, developer-tool exports, crash reports, and copied browser diagnostics; an
+in-memory UI cannot prevent deliberate inspection by a user or same-user process.
+
+Owner API requests accept an absent Origin, the request's exact same origin, or exactly
+`http://127.0.0.1:5173`. Foreign origins and excess preflight headers fail closed, and the
+server never emits wildcard CORS. This limits accidental browser exposure but is not
+transport encryption, process isolation, authorization for LAN use, or a defense against a
+compromised local browser, extension, or host. Keep both node and console on loopback.
 
 ## Model boundary
 

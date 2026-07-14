@@ -9,6 +9,9 @@ branch and draft pull request before merge. Repeat the safety checks below for e
 
 - Working tree and staged diff are understood and clean.
 - Test suite, compile check, public-tree scan, and independent secret scan pass.
+- Console install uses `npm ci`; `package.json` contains exact dependency versions and the
+  committed lockfile matches. Frontend tests, typecheck/build, and accessibility checks
+  pass without adding generated `node_modules/`, coverage, or `dist/` output to Git.
 - `git ls-files` contains no environment files, credentials, archives, raw/review media,
   runtime data, private grant snapshots, ledgers, receipts, or generated caches.
 - The configured grant store and ledger remain outside the candidate public tree. Treat them
@@ -75,10 +78,24 @@ commit a generated PNG or imply that the in-memory API fallback was printed. Eve
 value must remain labeled `simulated_software_path_only` beside
 `physical_stop_verified:false`.
 
+The owner-console wave may claim owner-authenticated `GET /owner/status` and
+`GET /owner/snapshot`, credential-free public grant projections, the current server
+housefile blueprint, bounded ledger display, grant issue/revoke controls, and explicit
+loading/error/retry/TRIPPED UI states after the automated gates pass. State that owner and
+new-grant tokens are memory-only and header-only, that operator captures must never include
+them, and that owner-route origins are limited to no Origin, exact same-origin, or exactly
+`http://127.0.0.1:5173`. Check that no wildcard CORS header or policy appears.
+
+Do not describe the console as a deployment, transport-secure remote administration,
+credential vault, real-dwelling UI, physical safety control, or proof that a command/device
+was relayed or stopped. A credential-free snapshot is still private household/activity
+data and must never be committed or published. Automated interaction and accessibility
+checks do not substitute for the required human visual review.
+
 Do not claim an NC loop, ESP32/serial bridge, OLED, printer, configured adapter invocation,
 device movement/stop, physical stop timing, or certified-safety result. Those remain later
 hardware/adapter proof gates. The live synthetic GPT-5.6 evaluation, real-dwelling
-materialization review, and live owner console also remain outstanding.
+materialization review, and human owner-console visual review also remain outstanding.
 
 ## After a public push
 

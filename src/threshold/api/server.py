@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, SecretStr
 
 from threshold.capture.seed import SEED_FILE, SEED_GRANTS
@@ -58,6 +58,14 @@ GRANT_LOCK = RLock()
 LEDGER = JsonlLedger(SETTINGS.ledger_path)
 ADAPTERS: tuple[object, ...] = ()
 DISPLAY_STATE = DisplayState()
+OWNER_CONSOLE_ORIGINS = frozenset({"http://127.0.0.1:5173"})
+OWNER_CORS_HEADERS = frozenset(
+    {
+        "content-type",
+        "x-threshold-owner-token",
+        "x-threshold-new-grant-token",
+    }
+)
 
 
 def _demo_seeds(settings: Settings) -> tuple[Grant, ...]:
@@ -125,6 +133,106 @@ class PublicGrant(BaseModel):
     issued: str
 
 
+class OwnerDwelling(BaseModel):
+    name: str
+
+
+class OwnerZone(BaseModel):
+    id: str
+    name: str
+    access: Access
+    boundary: tuple[float, float, float, float]
+    note: str
+    outdoor: bool
+
+
+class OwnerSystem(BaseModel):
+    id: str
+    name: str
+    zone: str
+    tag: str
+    detail: str
+
+
+class OwnerInventory(BaseModel):
+    id: str
+    name: str
+    zone: str
+    flags: tuple[str, ...]
+    note: str
+
+
+class OwnerQuirk(BaseModel):
+    id: str
+    zone: str
+    text: str
+
+
+class OwnerQuietHours(BaseModel):
+    start: str
+    end: str
+    timezone: str
+
+
+class OwnerPolicies(BaseModel):
+    quietHours: OwnerQuietHours
+    teleop: str
+    residency: str
+
+
+class OwnerHousefile(BaseModel):
+    schema_id: str = Field(alias="schema")
+    rev: str
+    dwelling: OwnerDwelling
+    zones: tuple[OwnerZone, ...]
+    systems: tuple[OwnerSystem, ...]
+    inventory: tuple[OwnerInventory, ...]
+    quirks: tuple[OwnerQuirk, ...]
+    policies: OwnerPolicies
+
+
+class OwnerHealth(BaseModel):
+    service: Literal["up"]
+    release_stage: Literal["pre-alpha"]
+    armed: Literal[False]
+    interlock: Literal["simulated_latched", "simulated_disabled"]
+    interlock_state: Literal["ARMED", "TRIPPED"]
+    physical_stop_verified: Literal[False]
+    timing_scope: Literal["simulated_software_path_only"]
+    ledger: Literal["persistent_jsonl_configured"]
+    ledger_availability: Literal["not_probed"]
+    grant_store: Literal["authoritative_digest_only_configured"]
+    grant_store_availability: Literal["not_probed"]
+    adapters: tuple[str, ...]
+    demo_mode: bool
+
+
+class OwnerDisplay(BaseModel):
+    state: Literal["ARMED", "READ", "DENY", "TRIPPED", "UNAVAILABLE"]
+    agent: str | None = None
+
+
+class OwnerStatus(BaseModel):
+    health: OwnerHealth
+    display: OwnerDisplay
+    active_grants: int = Field(ge=0)
+
+
+class OwnerLedgerEvent(BaseModel):
+    ts: str
+    type: EventType
+    agent: str
+    detail: str
+    tier: str | None = None
+
+
+class OwnerSnapshot(BaseModel):
+    housefile: OwnerHousefile
+    grants: tuple[PublicGrant, ...]
+    status: OwnerStatus
+    ledger: tuple[OwnerLedgerEvent, ...]
+
+
 class GrantIssueResponse(BaseModel):
     grant: PublicGrant
     credential_registered: bool
@@ -156,6 +264,92 @@ class SimulatedRearmResponse(BaseModel):
     grants_restored: Literal[False]
     timing_scope: Literal["simulated_software_path_only"]
     physical_stop_verified: Literal[False]
+
+
+def _owner_methods(path: str) -> frozenset[str]:
+    """Return the exact methods that cross-origin console calls may use."""
+
+    if path in {"/owner/snapshot", "/owner/status", "/ledger"}:
+        return frozenset({"GET"})
+    if path == "/grants" or path in {
+        "/sim/interlock/trip",
+        "/sim/interlock/rearm",
+    }:
+        return frozenset({"POST"})
+    if path.startswith("/grants/") and path.endswith("/revoke"):
+        return frozenset({"POST"})
+    return frozenset()
+
+
+def _owner_origin_allowed(request: Request) -> bool:
+    """Allow no Origin, the request's exact origin, or the fixed Vite origin."""
+
+    origin = request.headers.get("origin")
+    if origin is None:
+        return True
+    request_origin = f"{request.url.scheme}://{request.url.netloc}"
+    return origin == request_origin or origin in OWNER_CONSOLE_ORIGINS
+
+
+def _cors_response_headers(origin: str, methods: frozenset[str]) -> dict[str, str]:
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": ", ".join(sorted(methods)),
+        "Access-Control-Allow-Headers": ", ".join(sorted(OWNER_CORS_HEADERS)),
+        "Vary": "Origin",
+    }
+
+
+@app.middleware("http")
+async def owner_console_origin_policy(request: Request, call_next):
+    """Reject foreign owner-console origins and answer bounded preflights."""
+
+    requested_method = request.method
+    if request.method == "OPTIONS":
+        requested_method = request.headers.get(
+            "access-control-request-method",
+            "",
+        ).upper()
+    methods = _owner_methods(request.url.path)
+    is_owner_route = requested_method in methods
+    if not is_owner_route:
+        return await call_next(request)
+
+    if not _owner_origin_allowed(request):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "owner origin not allowed"},
+        )
+
+    origin = request.headers.get("origin")
+    if request.method == "OPTIONS":
+        if origin is None:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "owner origin not allowed"},
+            )
+        requested_headers = {
+            item.strip().lower()
+            for item in request.headers.get(
+                "access-control-request-headers",
+                "",
+            ).split(",")
+            if item.strip()
+        }
+        if not requested_headers.issubset(OWNER_CORS_HEADERS):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "owner headers not allowed"},
+            )
+        return Response(
+            status_code=204,
+            headers=_cors_response_headers(origin, methods),
+        )
+
+    response = await call_next(request)
+    if origin is not None:
+        response.headers.update(_cors_response_headers(origin, methods))
+    return response
 
 
 @app.exception_handler(RequestValidationError)
@@ -208,6 +402,125 @@ def _public_grant(grant: Grant) -> PublicGrant:
     )
 
 
+def _owner_housefile(file: Housefile) -> OwnerHousefile:
+    """Project the canonical in-memory THS shape without generic serialization."""
+
+    return OwnerHousefile(
+        schema=file.schema,
+        rev=file.rev,
+        dwelling=OwnerDwelling(name=file.dwelling_name),
+        zones=tuple(
+            OwnerZone(
+                id=zone.id,
+                name=zone.name,
+                access=zone.access,
+                boundary=zone.boundary,
+                note=zone.note,
+                outdoor=zone.outdoor,
+            )
+            for zone in file.zones
+        ),
+        systems=tuple(
+            OwnerSystem(
+                id=item.id,
+                name=item.name,
+                zone=item.zone,
+                tag=item.tag,
+                detail=item.detail,
+            )
+            for item in file.systems
+        ),
+        inventory=tuple(
+            OwnerInventory(
+                id=item.id,
+                name=item.name,
+                zone=item.zone,
+                flags=item.flags,
+                note=item.note,
+            )
+            for item in file.inventory
+        ),
+        quirks=tuple(
+            OwnerQuirk(id=item.id, zone=item.zone, text=item.text)
+            for item in file.quirks
+        ),
+        policies=OwnerPolicies(
+            quietHours=OwnerQuietHours(
+                start=file.policies.quiet_start,
+                end=file.policies.quiet_end,
+                timezone=file.policies.timezone,
+            ),
+            teleop=file.policies.teleop,
+            residency=file.policies.residency,
+        ),
+    )
+
+
+def _owner_health() -> OwnerHealth:
+    return OwnerHealth(
+        service="up",
+        release_stage="pre-alpha",
+        armed=False,
+        interlock=(
+            "simulated_latched"
+            if _simulated_appliance_enabled()
+            else "simulated_disabled"
+        ),
+        interlock_state=INTERLOCK.state.value,
+        physical_stop_verified=False,
+        timing_scope=SIMULATED_TIMING_SCOPE,
+        ledger="persistent_jsonl_configured",
+        ledger_availability="not_probed",
+        grant_store="authoritative_digest_only_configured",
+        grant_store_availability="not_probed",
+        adapters=(),
+        demo_mode=SETTINGS.demo_mode,
+    )
+
+
+def _owner_grants(*, now: datetime) -> tuple[Grant, ...]:
+    """Copy one verified authority revision for a stable owner projection."""
+
+    try:
+        grants = AUTHORITY.snapshot(now=now)
+    except GrantAuthorityUnavailable as exc:
+        raise HTTPException(503, "grant authority unavailable") from exc
+    return tuple(sorted(grants.values(), key=lambda item: item.id))
+
+
+def _owner_status(*, now: datetime, grants: tuple[Grant, ...]) -> OwnerStatus:
+    active_grants = sum(
+        grant.status == GrantStatus.ACTIVE for grant in grants
+    )
+    try:
+        frame = DISPLAY_STATE.frame(active_grants=active_grants, now=now)
+        display = OwnerDisplay(state=frame.mode.value, agent=frame.agent)
+    except Exception:
+        display = OwnerDisplay(state="UNAVAILABLE")
+    return OwnerStatus(
+        health=_owner_health(),
+        display=display,
+        active_grants=active_grants,
+    )
+
+
+def _owner_ledger(limit: int) -> tuple[OwnerLedgerEvent, ...]:
+    try:
+        entries = LEDGER.read(limit, fail_on_unavailable=True)
+    except OSError as exc:
+        raise HTTPException(503, "audit ledger unavailable") from exc
+    return tuple(
+        OwnerLedgerEvent(
+            ts=str(entry["ts"]),
+            type=EventType(str(entry["type"])),
+            agent=str(entry["agent"]),
+            detail=str(entry["detail"]),
+            tier=str(entry["tier"]) if "tier" in entry else None,
+        )
+        for entry in entries
+    )
+
+
 def _ensure_authority(now: datetime) -> None:
     try:
         AUTHORITY.ensure_ready(now=now)
@@ -216,6 +529,7 @@ def _ensure_authority(now: datetime) -> None:
 
 
 async def require_owner(
+    request: Request,
     x_threshold_owner_token: SecretStr | None = Header(
         default=None,
         alias="X-Threshold-Owner-Token",
@@ -223,6 +537,8 @@ async def require_owner(
 ) -> None:
     """Reject sensitive requests when auth is missing or unconfigured."""
 
+    if not _owner_origin_allowed(request):
+        raise HTTPException(403, "owner origin not allowed")
     settings: Settings = SETTINGS
     if not is_valid_bearer_token(settings.owner_token):
         raise HTTPException(503, "owner authentication is not configured")
@@ -425,29 +741,47 @@ def _usable_grant(
         raise HTTPException(503, "grant authority unavailable") from exc
 
 
-@app.get("/health")
-async def health() -> dict[str, object]:
+@app.get("/health", response_model=OwnerHealth)
+async def health() -> OwnerHealth:
     with GRANT_LOCK:
-        interlock_state = INTERLOCK.state.value
-        return {
-            "service": "up",
-            "release_stage": "pre-alpha",
-            "armed": False,
-            "interlock": (
-                "simulated_latched"
-                if _simulated_appliance_enabled()
-                else "simulated_disabled"
-            ),
-            "interlock_state": interlock_state,
-            "physical_stop_verified": False,
-            "timing_scope": SIMULATED_TIMING_SCOPE,
-            "ledger": "persistent_jsonl_configured",
-            "ledger_availability": "not_probed",
-            "grant_store": "authoritative_digest_only_configured",
-            "grant_store_availability": "not_probed",
-            "adapters": [],
-            "demo_mode": SETTINGS.demo_mode,
-        }
+        return _owner_health()
+
+
+@app.get(
+    "/owner/status",
+    response_model=OwnerStatus,
+    response_model_exclude_none=True,
+    dependencies=[Depends(require_owner)],
+)
+async def owner_status() -> OwnerStatus:
+    """Return bounded health, interlock, and display state for the console."""
+
+    with GRANT_LOCK:
+        request_now = _request_utc()
+        grants = _owner_grants(now=request_now)
+        return _owner_status(now=request_now, grants=grants)
+
+
+@app.get(
+    "/owner/snapshot",
+    response_model=OwnerSnapshot,
+    response_model_exclude_none=True,
+    dependencies=[Depends(require_owner)],
+)
+async def owner_snapshot(
+    ledger_limit: int = Query(default=100, ge=1, le=1_000),
+) -> OwnerSnapshot:
+    """Return one owner-only, credential-free console snapshot."""
+
+    with GRANT_LOCK:
+        request_now = _request_utc()
+        grants = _owner_grants(now=request_now)
+        return OwnerSnapshot(
+            housefile=_owner_housefile(FILE),
+            grants=tuple(_public_grant(grant) for grant in grants),
+            status=_owner_status(now=request_now, grants=grants),
+            ledger=_owner_ledger(ledger_limit),
+        )
 
 
 @app.post(

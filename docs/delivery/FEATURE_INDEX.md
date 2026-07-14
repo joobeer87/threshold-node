@@ -8,7 +8,7 @@
 | THS-F004 | Public-release hygiene | Synthetic fixtures, ignore rules, and fail-closed scans for tracked runtime data, ledgers, capture inputs, and receipts | Runnable |
 | THS-F005 | Persistent append-only ledger | JSONL append+fsync, bounded reads, allowlisted fields, prepared checkpoints, exact receipt witnesses, and durable ESTOP events | Runnable local durability |
 | THS-F006 | GPT-5.6 observation proposal | Merged provider-free adapter, strict validator, private artifact, digest-bound owner decision; live eval pending | Runnable provider-free; not demo-proven |
-| THS-F007 | Owner console | JSX visual reference only | Planned |
+| THS-F007 | Owner console | Owner-auth snapshot/status API; credential-free housefile/grant/interlock/bounded-ledger projections; exact-origin React/Vite/TypeScript blueprint, issue/revoke, loading/error/retry, and TRIPPED UI; exact-pinned lockfile | Runnable loopback pre-alpha; automated proof complete, human visual review pending |
 | THS-F008 | Prototype physical stop loop | Hardware plan only | Planned |
 | THS-F009 | Aurora public signature | Hidden static route + safety test | Runnable |
 | THS-F010 | Real-footage privacy workflow | Checklist + Git/scanner boundary | Runnable |
@@ -28,6 +28,13 @@ does not load or authenticate THS-F006 proposal/decision artifacts, make a model
 infer a floor plan. Materialization consumes a separate exact declarative review and writes
 only a local fixture carrying the required synthetic markers; it is not invoked by proposal
 confirmation or the running API. Those markers do not prove arbitrary content is fictional,
-and digests are change bindings, not tamper evidence. A live synthetic GPT-5.6
-quality/cost/latency evaluation, real-dwelling workflow, and owner-console integration are
-still not run.
+and digests are change bindings, not tamper evidence.
+
+Wave 7 implements THS-F007 without changing those materialization boundaries. The console
+reads the server's current housefile through owner-authenticated projections; it does not
+load THS-0023 output. Owner/new-grant tokens stay in page memory and headers only, owner
+routes accept no Origin, exact same-origin, or exactly `http://127.0.0.1:5173`, and no
+wildcard CORS is emitted. Automated backend/frontend contract, interaction, build/type, and
+accessibility proof is present. Delivery remains `warn` pending human visual review. A live
+synthetic GPT-5.6 quality/cost/latency evaluation and real-dwelling workflow are still not
+run.

@@ -19,6 +19,21 @@ No version is security-supported yet. The `0.1.x` line is a Build Week prototype
 
 - Use only `schema/examples/synthetic-demo-house.json` and the in-code synthetic seed.
 - Generate owner and grant tokens locally; never commit or print them.
+- Treat the owner console as a local authenticated control surface, not a public dashboard.
+  Its owner token and one-time new-grant token must remain only in page memory: never put
+  either value in browser storage, cookies, URLs, screenshots, recordings, logs, or build
+  artifacts. Lock or reload the page to clear its in-memory state.
+- Owner routes accept an absent `Origin`, the request's exact same origin, or exactly
+  `http://127.0.0.1:5173`. They reject foreign origins and unapproved preflight headers and
+  never emit `Access-Control-Allow-Origin: *`. This origin check complements owner
+  authentication; it does not replace it or make a LAN/internet deployment safe.
+- `GET /owner/snapshot` and `GET /owner/status` expose owner-only projections. Snapshot
+  responses may contain the complete current housefile and bounded activity data, so they
+  remain sensitive even though their grant records omit credential digests and raw
+  credentials. Never publish a response body or browser capture.
+- Install console dependencies from the committed exact-pinned lockfile with `npm ci`.
+  Review any dependency or lockfile update as a separate supply-chain change; do not use a
+  floating install to reproduce this wave.
 - Raw grant credentials must remain memory-only. The private store retains only credential
   digests, which are still sensitive and must never be published.
 - Keep the default loopback bind. A network bind is an explicit, reviewed opt-in.
@@ -42,6 +57,10 @@ No version is security-supported yet. The `0.1.x` line is a Build Week prototype
   allowlisted. Use only the explicit private write-once sink, and never force-add its output.
 - The GPT-5.6 adapter has provider-free contract evidence only. Do not claim live quality,
   latency, token use, or cost until a reviewed synthetic provider evaluation exists.
+- The React console's automated contract, interaction, build/type, and accessibility
+  checks are software evidence only. Human visual review remains required, and neither the
+  console nor its `TRIPPED` presentation proves command relay, physical response, or
+  certified safety.
 - Use THS-0022/0023 only with unmistakably synthetic inputs and private temporary canonical
   targets. Geometry is a fixed ordered sketch, not inferred or measured floor-plan data;
   it must never assign access, no-go, or outdoor policy.

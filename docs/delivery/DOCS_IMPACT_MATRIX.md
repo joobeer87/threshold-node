@@ -2,27 +2,27 @@
 
 | Surface | Impact | State |
 |---|---|---|
-| README | fixed digest-bound geometry, explicit reviewed synthetic materialization, standalone/live-API boundary, privacy and real-use nonclaims | Updated through Wave 6 |
+| README | loopback owner-console quickstart, snapshot/status surface, exact origin policy, memory-only token boundary, UI capabilities and nonclaims | Updated through Wave 7 |
 | AGENTS.md | public-repo, synthetic-only, validation, and operator boundaries | Reviewed; no change |
 | CODING-GUIDE | canonical public schema and byte-identical installed package-data projection | Updated for Wave 6 |
-| SECURITY.md | fail-closed geometry/materialization digest, schema, synthetic, lock/CAS boundaries; no authentication/tamper/real-use claims | Updated for Wave 6 |
+| SECURITY.md | owner snapshot sensitivity, exact-origin/no-wildcard policy, memory-only tokens, exact-lockfile install, visual/safety nonclaims | Updated for Wave 7 |
 | HARDWARE.md | simulated interlock/display/receipt boundaries versus untested NC loop, ESP32, OLED, printer, and physical timing | Updated for Wave 5 |
-| SPEC-NODE + SPEC-THS | THS-0022 fixed geometry schema/algorithm and THS-0023 exact declarative review, strict synthetic materialization, local atomicity/failure doctrine | Updated for THS-0022/0023 |
-| ARCHITECTURE | caller-supplied proposal digest → explicit order → geometry binding → explicit review → synthetic revision CAS; server remains seed-backed | Updated for Wave 6 |
-| PRIVACY | geometry/review/receipt/housefile artifacts stay local; hashes can fingerprint layouts; explicit choices prevent model policy assignment | Updated for Wave 6 |
+| SPEC-NODE + SPEC-THS | owner snapshot/status contract and console behavior added to SPEC-NODE; THS schema is unchanged | Updated for THS-0050 |
+| ARCHITECTURE | Vite loopback proxy → exact-origin owner API → credential-free projections; token and pending visual-review boundaries | Updated for Wave 7 |
+| PRIVACY | snapshots remain private; token/browser-storage/screenshot restrictions; local-origin limitations and threat nonclaims | Updated for Wave 7 |
 | AURORA-EASTER-EGG | honest public Aurora framework signature | Replaced leak concept |
 | REAL-FOOTAGE-CHECKLIST | staged-room, metadata, visual/audio review | Added |
 | Media boundary | raw/review/export footage excluded from Git | Added |
 | CONTRIBUTING + GitHub templates | public contribution and issue/PR hygiene | Added |
-| KANBAN | THS-0022/0023 complete; THS-0012 hardened; THS-0050 owner-auth and THS-0060 conditional-hardware dependencies corrected | Updated for Wave 6 |
-| BUILD-WEEK | provider-free fixed geometry and synthetic materialization proof separated from live model, real dwelling, console, and hardware work | Updated for Wave 6 |
-| DEMO-SCRIPT | runnable synthetic geometry/materialization proof and explicit no-survey/no-live-API/no-real-house language | Updated for Wave 6 |
+| KANBAN | THS-0050 complete with automated proof; delivery remains WARN pending human visual review; THS-0024 records the separate Vault-gated live-eval wave | Updated for Wave 7 |
+| Console design contract | Reference-derived tokens, responsive layout, interaction, accessibility, credential, and pending visual-review boundaries | Added for Wave 7 |
+| BUILD-WEEK | implemented owner API/console proof separated from visual approval, deployment, real dwelling, provider, and hardware claims | Updated for Wave 7 |
+| DEMO-SCRIPT | loopback console run path, safe token handling, shown states, and human visual-review hold | Updated for Wave 7 |
 | Config example | exact `ESP32_SERIAL=SIMULATED` plus demo-mode requirement for simulated control routes | Updated for Wave 5 |
-| PUBLICATION-CHECKLIST | exact allowed fixed-grid/local-CAS claims and prohibited inferred/real/automatic/tamper/live-server claims | Updated for Wave 6 |
-| Delivery records | F019/F020 feature and QA mapping; Wave 6 remains synthetic-only and standalone | Updated for Wave 6 |
+| PUBLICATION-CHECKLIST | exact owner-console claims, pinned dependency/public-tree gates, private snapshot and visual-review nonclaims | Updated for Wave 7 |
+| Delivery records | F007 feature/QA mapping; console gate remains WARN pending human visual review | Updated for Wave 7 |
 
-PR #3 is merged at `a109b4d`; draft PR #4 contains Wave 4 and stacked draft PR #5 contains
-Wave 5. Wave 6 is prepared on `agent/wave6-geometry-materialization` for a separate stacked
-draft PR. These records reflect only the local gate; they do not claim draft-PR checks,
-review, merge, deployment, provider evaluation, real-dwelling materialization, physical
+Wave 7 is prepared on `agent/wave7-owner-console` as a separately reviewable change. These
+records reflect only the local automated gate; they do not claim human visual approval,
+PR review/merge, deployment, provider evaluation, real-dwelling materialization, physical
 hardware operation, physical stop/latency, or submission readiness.

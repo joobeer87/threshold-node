@@ -87,8 +87,31 @@ the expected synthetic housefile revision before a validated local atomic update
 This test output is suitable as software-path evidence only. Runtime geometry, review,
 receipt, digest, and housefile artifacts stay private. Proposal confirmation does not call
 the materializer, the API does not serve its output, and real-dwelling materialization is
-not permitted by this proof. Keep blueprint-console footage in the target sequence until
-PR #7 has frontend tests and a human visual review.
+not permitted by this proof.
+
+## Runnable now — synthetic owner console, visual review pending
+
+Run the node on its default loopback address, then install exactly from the committed
+lockfile and start the fixed Vite development origin:
+
+```bash
+cd console
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173` and enter a local owner token in the masked field. Never put a
+token in the URL, browser storage, screenshots, recordings, or copied developer-tool
+output. The page uses `/api` through the loopback Vite proxy; the node accepts that exact
+origin, same-origin requests, or origin-less clients and never emits wildcard CORS.
+
+The console demonstrates explicit loading/error/retry, the server's current synthetic
+blueprint, credential-free grant projections, issue/revoke, a bounded newest-first ledger,
+and truthful simulated ARMED/TRIPPED states. A new-grant credential is sent once in a
+header, cleared from the page, and never returned. The TRIPPED panel states that timing is
+software-only and no physical stop is verified. The automated backend/frontend contracts,
+build/type checks, and accessibility scan are evidence for behavior, not visual polish.
+Keep console footage in the target sequence until a human has completed visual review.
 
 ## Target submission sequence — 75 seconds
 

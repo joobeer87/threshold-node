@@ -9,6 +9,11 @@
    - `POST /grants/{id}/revoke` (owner-auth) → active/suspended grants become revoked;
      already-revoked or expired grants return unchanged
    - `GET /ledger?limit=<n>` (owner-auth) → bounded newest-first local events
+   - `GET /owner/status` (owner-auth) → bounded health, simulated interlock/display state,
+     and active-grant count
+   - `GET /owner/snapshot?ledger_limit=<n>` (owner-auth, `1..1000`) → one credential-free
+     owner projection containing the current server housefile, public grants, owner status,
+     and bounded newest-first ledger events
    - `POST /sim/interlock/trip` (owner-auth, explicit synthetic-demo gate) → exercise one
      latched software stop cycle and return bounded counters/nonclaims
    - `POST /sim/interlock/rearm` (owner-auth, explicit synthetic-demo gate) → clear only a
@@ -85,7 +90,23 @@ NOT A SAFETY SYSTEM
    explicit optional sink accepts only a private `0700` directory and new `0600`, single-link,
    write-once PNG target; it rejects existing targets, symlinks, hardlinks, and public
    directories. No printer output is implemented.
-5. **Owner console** — reference/Threshold-MVP.jsx rebuilt against the live API (P5). Same blueprint UI, synthetic demo data.
+5. **Owner console** — exact-pinned React/Vite/TypeScript application under `console/`.
+   - Development origin is exactly `http://127.0.0.1:5173`; `/api` is proxied to the node
+     at `http://127.0.0.1:8471`.
+   - Owner routes accept no `Origin`, the request's exact same origin, or the fixed
+     development origin. Foreign origins, excess preflight headers, and unsupported methods
+     fail closed. `Access-Control-Allow-Origin: *` is prohibited.
+   - Owner and new-grant tokens exist only in React component memory and request headers.
+     They are excluded from URLs, cookies, browser storage, response bodies, screenshots,
+     and build artifacts. Lock/reload clears page state; grant issue clears the distinct
+     credential field after request construction.
+   - The application implements locked, loading, ready, error, retry, refresh, and lock
+     states; a canonical synthetic blueprint view; public grant list/issue/revoke; a bounded
+     ledger table; and prominent ARMED/TRIPPED simulated-interlock presentation.
+   - Snapshot and grant response traversal fails closed if a credential-like field appears.
+     The API's `PublicGrant` schema omits credential material by construction.
+   - Automated backend contract, frontend interaction, type/build, and accessibility checks
+     are required. Human visual review remains a separate delivery gate.
 6. **Vision proposal CLI** — `threshold.capture.openai_vision` operates only on a fixed
    private `data/capture/batch-<id>` created by THS-0020. `propose` requires the expected
    manifest SHA-256, an environment-only OpenAI API key, and explicit external-processing
@@ -115,6 +136,11 @@ NOT A SAFETY SYSTEM
 All checked-in housefile, receipt, and console data is fictional. Real dwelling exports,
 camera frames, device identifiers, credentials, and printed receipts belong in ignored
 local storage only.
+
+Owner snapshot bodies are not publication-safe merely because credentials and digests are
+absent. They can contain full housefile policy plus bounded activity context. The exact
+origin policy is defense in depth alongside owner authentication, not authorization to
+bind either process to a LAN, deploy the console, or claim transport security.
 
 ## Failure doctrine
 

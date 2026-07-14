@@ -8,14 +8,20 @@ scanner, and synthetic FFmpeg proofs pass. The GPT-5.6 proposal adapter, strict 
 and local owner-decision record are implemented with provider-free tests. Deterministic
 digest-bound geometry and a separate synthetic-only reviewed materializer are implemented
 as standalone local boundaries; they are not the source used by the running API. Live model
-evaluation, real-dwelling materialization, adapters, console, and physical hardware remain
-incomplete. The simulated appliance adds a process-local latched stop coordinator,
-deterministic terminal frames, and a synthetic PNG receipt fallback; it proves only the
-software path.
+evaluation, real-dwelling materialization, adapters, and physical hardware remain
+incomplete. The owner-authenticated snapshot/status API and exact-pinned
+React/Vite/TypeScript console are implemented for loopback use; automated checks pass but
+human visual review remains pending. The simulated appliance adds a process-local latched
+stop coordinator, deterministic terminal frames, and a synthetic PNG receipt fallback; it
+proves only the software path.
 
 ```
-                   owner console (blueprint UI, P5: MVP.jsx → live API)
-                                      │ HTTP :8471
+ owner console :5173 ── /api proxy ──► owner routes :8471
+ blueprint/grants/ledger/TRIPPED         │ exact origin + owner header
+ memory-only tokens                      │ no wildcard CORS
+                                         ▼
+                                  credential-free snapshot
+
  phone walk → local intake → private frame batch ──explicit consent──► Responses API
                                       │                                      │
                                       │                         strict observation output
@@ -53,6 +59,31 @@ software path.
 
  durable append ──► core/events observers (best effort only)
 ```
+
+The owner console is a separate loopback development process. Vite is fixed to
+`127.0.0.1:5173` and proxies `/api` to `127.0.0.1:8471`. Owner-route middleware accepts
+only origin-less non-browser clients, the request's exact same origin, or that exact Vite
+origin; it emits the requesting allowed origin and never a wildcard. Preflights are limited
+to the exact route method and allowlisted owner/content headers.
+
+`GET /owner/status` returns bounded health, display/interlock state, and an active-grant
+count. `GET /owner/snapshot?ledger_limit=...` takes one grant-authority snapshot while the
+grant lock is held and returns the full current server housefile, public grant projections,
+the same bounded status, and newest-first allowlisted ledger events. Public grant schemas
+have no credential field, and the frontend rejects any response tree containing a forbidden
+credential-like key. The response still contains sensitive house and activity context and
+is owner-only.
+
+The React application holds owner and new-grant tokens only in component state. Requests
+send them in dedicated headers from masked inputs with `credentials: "omit"`,
+`cache: "no-store"`, redirects disabled, and no referrer; issue clears the new-grant field
+after forming the request, and Lock clears all page state. The application does not write
+credentials to browser storage, cookies, URLs, logs, screenshots, or build artifacts.
+Blueprint, public grant issue/revoke, bounded ledger, loading/error/retry, and simulated
+`TRIPPED` states are implemented. Package versions are
+exactly pinned in `package.json` and the committed npm lockfile. Automated behavior,
+contract, type/build, and accessibility checks do not replace the pending human visual
+review.
 
 `GrantAuthority` is the only integrated owner of usable grant state. The private envelope
 contains complete bounded metadata and credential digests, never raw bearer values. Grant

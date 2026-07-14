@@ -26,6 +26,11 @@ receipts/
 *.log
 *.jsonl
 
+# Owner console build and test output
+console/node_modules/
+console/dist/
+console/coverage/
+
 # Real-world capture and video review (publish only an approved external link)
 media/raw/
 media/review/
