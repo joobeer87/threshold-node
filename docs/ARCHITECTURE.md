@@ -67,12 +67,13 @@ origin; it emits the requesting allowed origin and never a wildcard. Preflights 
 to the exact route method and allowlisted owner/content headers.
 
 `GET /owner/status` returns bounded health, display/interlock state, and an active-grant
-count. `GET /owner/snapshot?ledger_limit=...` takes one grant-authority snapshot while the
-grant lock is held and returns the full current server housefile, public grant projections,
-the same bounded status, and newest-first allowlisted ledger events. Public grant schemas
-have no credential field, and the frontend rejects any response tree containing a forbidden
-credential-like key. The response still contains sensitive house and activity context and
-is owner-only.
+count. Both owner routes capture one request clock and ask the grant authority to durably
+commit every exact-boundary expiry it first observes while the grant lock and cross-instance
+authority lock are held. `GET /owner/snapshot?ledger_limit=...` then returns the full current
+server housefile, public grant projections, the same bounded status, and newest-first
+allowlisted ledger events. Public grant schemas have no credential field, and the frontend
+rejects any response tree containing a forbidden credential-like key. The response still
+contains sensitive house and activity context and is owner-only.
 
 The React application holds owner and new-grant tokens only in component state. Requests
 send them in dedicated headers from masked inputs with `credentials: "omit"`,

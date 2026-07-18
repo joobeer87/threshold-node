@@ -69,6 +69,11 @@ state. `GET /owner/status` returns only bounded state and the active-grant count
 schema can contain raw credentials or credential digests, but names, geometry, policies,
 grant scopes, schedules, and activity events remain private household context.
 
+Before either owner response is formed, the grant authority durably commits any expiry or
+window end observed at that request's captured clock. If the restrictive transition cannot
+be committed, the route returns an unavailable response rather than exposing a stale active
+grant or count.
+
 The owner token and the distinct new-grant token live only in React component state. They
 are sent only in request headers, never in URLs, response bodies, browser storage, cookies,
 or build artifacts. The issue field is cleared after the request is formed, and Lock or a

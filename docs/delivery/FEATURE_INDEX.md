@@ -8,11 +8,11 @@
 | THS-F004 | Public-release hygiene | Synthetic fixtures, ignore rules, and fail-closed scans for tracked runtime data, ledgers, capture inputs, and receipts | Runnable |
 | THS-F005 | Persistent append-only ledger | JSONL append+fsync, bounded reads, allowlisted fields, prepared checkpoints, exact receipt witnesses, and durable ESTOP events | Runnable local durability |
 | THS-F006 | GPT-5.6 observation proposal | Merged provider-free adapter, strict validator, private artifact, digest-bound owner decision; live eval pending | Runnable provider-free; not demo-proven |
-| THS-F007 | Owner console | Owner-auth snapshot/status API; credential-free housefile/grant/interlock/bounded-ledger projections; exact-origin React/Vite/TypeScript blueprint, issue/revoke, perceptible loading/error/retry, contained labels, and TRIPPED UI; exact-pinned lockfile | Runnable loopback pre-alpha; corrected visual review owner-accepted 2026-07-14 |
+| THS-F007 | Owner console | Owner-auth snapshot/status API with durable first-observer expiry; credential-free housefile/grant/interlock/bounded-ledger projections; exact-origin React/Vite/TypeScript blueprint, issue/revoke, perceptible loading/error/retry, contained labels, and TRIPPED UI; exact-pinned lockfile | Runnable loopback pre-alpha; corrected visual review owner-accepted 2026-07-14 |
 | THS-F008 | Prototype physical stop loop | Hardware plan only | Planned |
 | THS-F009 | Aurora public signature | Hidden static route + safety test | Runnable |
 | THS-F010 | Real-footage privacy workflow | Checklist + Git/scanner boundary | Runnable |
-| THS-F011 | Grant lifecycle and time policy | Issue/revoke, digest-only auth, durable expiry/suspension, one-time windows, restart persistence, and no grant restoration on simulated re-arm | Runnable pre-alpha |
+| THS-F011 | Grant lifecycle and time policy | Issue/revoke, digest-only auth, durable expiry/suspension including owner-projection first observation, one-time windows, restart persistence, and no grant restoration on simulated re-arm | Runnable pre-alpha |
 | THS-F012 | Synthetic mock-agent permission loop | Scoped read → allowed/not-relayed → no-go denial | Runnable |
 | THS-F013 | Privacy-first local capture intake | JPEG/PNG or MOV/MP4/M4V → bounded private JPEG batch; local proofs pass | Runnable locally; not a model integration |
 | THS-F014 | Authoritative persistent grant state | Revisioned digest-only store, cross-instance transaction lock, pending recovery, ledger/target witness, fail-closed corruption handling, and durable all-grant suspension | Runnable local authority |
@@ -36,6 +36,7 @@ load THS-0023 output. Owner/new-grant tokens stay in page memory and headers onl
 routes accept no Origin, exact same-origin, or exactly `http://127.0.0.1:5173`, and no
 wildcard CORS is emitted. Automated backend/frontend contract, interaction, build/type, and
 accessibility proof is present. The implemented loopback-console delivery gate is `pass`
-after the owner accepted the changes-requested visual fixes. A live
+after the owner accepted the changes-requested visual fixes and the selected PR review fix
+made owner status/snapshot persist due expiries before projection. A live
 synthetic GPT-5.6 quality/cost/latency evaluation and real-dwelling workflow are still not
 run.

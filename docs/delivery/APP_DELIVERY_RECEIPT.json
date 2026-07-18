@@ -1,18 +1,21 @@
 {
   "schema_version": "1.0",
   "task": "wave7_owner_console",
-  "authority": "L2_local_plus_user_authorized_exact_pinned_console_dependencies_and_pr_publication",
-  "delivery_gate": "pass_loopback_pre_alpha_scope",
+  "authority": "L2_local_selected_pr7_thread_1_fix_no_push_merge_or_hosted_mutation_authorized",
+  "delivery_gate": "pass_local_loopback_pre_alpha_scope",
   "impacted_features": [
     "THS-F002",
     "THS-F005",
     "THS-F007",
     "THS-F011",
+    "THS-F014",
     "THS-F016",
     "THS-F017"
   ],
   "proof": {
-    "backend_owner_contract_tests": "pass_69_focused_and_449_full_suite",
+    "backend_owner_contract_tests": "pass_72_focused_and_454_full_suite",
+    "grant_authority_tests": "pass_24_including_owner_first_expiry_and_restart_persistence",
+    "selected_pr_review_fix": "pass_locally_thread_1_owner_projection_expiry",
     "frontend_interaction_tests": "pass_18_including_loading_dwell_and_blueprint_label_containment",
     "frontend_typecheck": "pass",
     "frontend_production_build": "pass",
@@ -29,7 +32,7 @@
   "qa_matrix": "docs/delivery/QA_MATRIX.md",
   "human_leverage": {
     "status": "pass",
-    "summary": "The loopback console makes the synthetic housefile, public grant lifecycle, bounded ledger, and simulated interlock state reviewable through one owner-authenticated UI; the first human pass found three visual defects, their fixes were implemented, and the owner accepted the corrected loading duration, semantic color separation, and blueprint label containment on 2026-07-14."
+    "summary": "The loopback console makes the synthetic housefile, truthful current public grant lifecycle, bounded ledger, and simulated interlock state reviewable through one owner-authenticated UI. Owner status/snapshot now persist due expiry before projection, removing the need for a robot request or manual reconciliation to refresh the active-grant view. The owner accepted the corrected loading duration, semantic color separation, and blueprint label containment on 2026-07-14."
   },
   "blocked_claims": [
     "submission-ready polish",
@@ -42,9 +45,11 @@
     "robot command relay, device motion, physical hardware stop, or certified safety",
     "merge or submission readiness"
   ],
-  "hosted_mutation_scope": "user_authorized_pr_7_publication_ready_for_review_unmerged",
+  "hosted_mutation_scope": "existing_pr_7_unmerged_local_review_fix_not_pushed_or_resolved",
   "secret_material_returned": false,
   "live_provider_request_performed": false,
   "hosted_or_provider_mutation_recorded": true,
+  "local_review_fix_push_performed": false,
+  "local_review_thread_resolution_performed": false,
   "merge_performed": false
 }

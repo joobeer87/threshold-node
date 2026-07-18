@@ -479,7 +479,7 @@ def _owner_health() -> OwnerHealth:
 
 
 def _owner_grants(*, now: datetime) -> tuple[Grant, ...]:
-    """Copy one verified authority revision for a stable owner projection."""
+    """Persist due expiries, then copy a stable authority revision."""
 
     try:
         grants = AUTHORITY.snapshot(now=now)

@@ -207,9 +207,11 @@ class GrantAuthority:
             return len(affected)
 
     def snapshot(self, *, now: datetime | None = None) -> dict[str, Grant]:
-        """Return an isolated effective snapshot for owner-safe projections."""
+        """Persist due expiries, then return one isolated effective snapshot."""
 
-        with self._exclusive(now=now):
+        current = normalize_time(now or datetime.now(timezone.utc), "current time")
+        with self._exclusive(now=current):
+            self._expire_due_locked(now=current)
             return self._copy_grants(self.grants)
 
     @contextmanager
@@ -278,19 +280,47 @@ class GrantAuthority:
         grant = self.grants[grant_id]
         decision = self._manager.decision(grant, now=now)
         if decision.next_status == GrantStatus.EXPIRED:
-            target = self._copy_grants(self.grants)
-            target[grant_id].status = GrantStatus.EXPIRED
-            self._commit(
-                kind="expire",
-                target=target,
-                previous_statuses={grant_id: grant.status},
-                event_type=EventType.DENY,
-                agent=grant_id,
-                detail=f"{action} refused: grant_expired",
+            grant = self._commit_expiry_locked(
+                grant_id,
                 now=now,
+                detail=f"{action} refused: grant_expired",
             )
-            grant = self.grants[grant_id]
         return grant, decision
+
+    def _expire_due_locked(self, *, now: datetime) -> None:
+        """Commit every due active grant before an owner projection is copied."""
+
+        for grant_id in sorted(self.grants):
+            decision = self._manager.decision(self.grants[grant_id], now=now)
+            if decision.next_status == GrantStatus.EXPIRED:
+                self._commit_expiry_locked(
+                    grant_id,
+                    now=now,
+                    detail="owner projection observed: grant_expired",
+                )
+
+    def _commit_expiry_locked(
+        self,
+        grant_id: str,
+        *,
+        now: datetime,
+        detail: str,
+    ) -> Grant:
+        """Persist one already-evaluated expiry while authority is exclusive."""
+
+        grant = self.grants[grant_id]
+        target = self._copy_grants(self.grants)
+        target[grant_id].status = GrantStatus.EXPIRED
+        self._commit(
+            kind="expire",
+            target=target,
+            previous_statuses={grant_id: grant.status},
+            event_type=EventType.DENY,
+            agent=grant_id,
+            detail=detail,
+            now=now,
+        )
+        return self.grants[grant_id]
 
     def _commit(
         self,

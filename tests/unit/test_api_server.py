@@ -203,6 +203,91 @@ def test_owner_status_tracks_simulated_trip_without_restoring_credentials():
     assert tripped.json()["active_grants"] == 0
 
 
+@pytest.mark.parametrize(
+    ("path", "time_policy"),
+    [
+        ("/owner/status", {"expires": timestamp(NOW)}),
+        (
+            "/owner/snapshot",
+            {
+                "window": (
+                    f"{timestamp(NOW - timedelta(minutes=30))}/{timestamp(NOW)}"
+                )
+            },
+        ),
+    ],
+    ids=("status-expiry", "snapshot-window-end"),
+)
+def test_owner_projection_is_first_observer_of_durable_expiry(path, time_policy):
+    item = Grant(
+        "g-owner-observed-expiry",
+        "Synthetic Owner-Observed Expiry Agent",
+        "agent",
+        (Scope.READ_LAYOUT,),
+        ("kitchen",),
+        credential_digest=token_digest(NEW_GRANT_VALUE),
+        **time_policy,
+    )
+    persist_grant(item, issued_at=NOW - timedelta(hours=1))
+
+    response = request(
+        "GET",
+        path,
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    status = body if path == "/owner/status" else body["status"]
+    assert status["active_grants"] == 1
+    assert server.AUTHORITY.grants[item.id].status == GrantStatus.EXPIRED
+    if path == "/owner/snapshot":
+        projected = next(
+            grant for grant in body["grants"] if grant["id"] == item.id
+        )
+        assert projected["status"] == GrantStatus.EXPIRED.value
+
+    event = server.LEDGER.read()[0]
+    assert event["type"] == EventType.DENY.value
+    assert event["agent"] == item.id
+    assert event["detail"] == "owner projection observed: grant_expired"
+
+    restarted = GrantAuthority(
+        server.FILE,
+        GrantMetadataStore(server.SETTINGS.grant_store_path),
+        JsonlLedger(server.SETTINGS.ledger_path),
+    )
+    restarted.ensure_ready(now=NOW)
+    assert restarted.grants[item.id].status == GrantStatus.EXPIRED
+
+
+def test_owner_projection_fails_closed_when_expiry_cannot_be_committed(monkeypatch):
+    item = Grant(
+        "g-owner-expiry-failure",
+        "Synthetic Owner Expiry Failure Agent",
+        "agent",
+        (Scope.READ_LAYOUT,),
+        ("kitchen",),
+        expires=timestamp(NOW),
+        credential_digest=token_digest(NEW_GRANT_VALUE),
+    )
+    persist_grant(item, issued_at=NOW - timedelta(hours=1))
+
+    def fail_append(_prepared):
+        raise OSError("synthetic owner expiry append failure")
+
+    monkeypatch.setattr(server.AUTHORITY.ledger, "append_prepared", fail_append)
+    response = request(
+        "GET",
+        "/owner/status",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "grant authority unavailable"}
+    assert "active_grants" not in response.text
+
+
 @pytest.mark.parametrize("ledger_limit", [0, 1001])
 def test_owner_snapshot_ledger_limit_is_bounded(ledger_limit):
     response = request(

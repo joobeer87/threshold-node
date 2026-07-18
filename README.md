@@ -39,7 +39,8 @@ stay in ignored local storage.
 - Owner-authenticated `GET /owner/snapshot` and `GET /owner/status` projections. The
   snapshot returns the server's current canonical housefile, public grant projections,
   bounded newest-first ledger data, and truthful simulated interlock/health state without
-  credential digests.
+  credential digests. Both owner projections durably persist any exact-boundary grant
+  expiry they first observe before reporting grant status or the active-grant count.
 - A loopback React/Vite/TypeScript owner console with explicit loading, error, retry, and
   lock states; blueprint, grants, bounded-ledger, and prominent `TRIPPED` views; and grant
   issue/revoke controls. Owner and new-grant tokens remain in page memory only and are
