@@ -12,10 +12,13 @@ capabilities granted to a caller, refuses no-go actions, and records access deci
 > a guarded GPT-5.6 observation-proposal adapter. A simulated, process-local stop-interlock,
 > deterministic terminal states, and a synthetic PNG receipt fallback are implemented with
 > software-path tests. Deterministic digest-bound geometry and a separate synthetic-only,
-> owner-reviewed housefile materializer are implemented as local library boundaries. Live
-> model quality has not been evaluated, and real-dwelling materialization, live canonical
-> loading, robot adapters, owner console, ESP32/NC-loop input, OLED/printer output, and
-> physical stopping are not implemented.
+> owner-reviewed housefile materializer are implemented as local library boundaries. An
+> owner-authenticated loopback snapshot API and React/Vite/TypeScript console provide
+> credential-free housefile, grant, interlock, and bounded-ledger views plus grant
+> issue/revoke controls. Live model quality has not been evaluated, and real-dwelling
+> materialization, live loading of materialized housefiles, robot adapters, ESP32/NC-loop
+> input, OLED/printer output, and physical stopping are not implemented. The owner accepted
+> the corrected console visual review on 2026-07-14.
 > This is not a life-safety system.
 
 ## Why this exists
@@ -33,6 +36,18 @@ stay in ignored local storage.
 - Pure `scoped_view` policy function with defense-in-depth around no-go zones.
 - Per-grant bearer authentication for robot reads and commands.
 - Separate owner authentication for grant issue/revoke and ledger access.
+- Owner-authenticated `GET /owner/snapshot` and `GET /owner/status` projections. The
+  snapshot returns the server's current canonical housefile, public grant projections,
+  bounded newest-first ledger data, and truthful simulated interlock/health state without
+  credential digests. Both owner projections durably persist any exact-boundary grant
+  expiry they first observe before reporting grant status or the active-grant count.
+- A loopback React/Vite/TypeScript owner console with explicit loading, error, retry, and
+  lock states; blueprint, grants, bounded-ledger, and prominent `TRIPPED` views; and grant
+  issue/revoke controls. Owner and new-grant tokens remain in page memory only and are
+  never placed in browser storage, cookies, URLs, response bodies, or build artifacts.
+- An exact owner-route origin policy: no `Origin`, the request's same origin, or exactly
+  `http://127.0.0.1:5173` is accepted. Foreign origins and unapproved preflight headers
+  fail closed, and wildcard CORS is never emitted.
 - Server-generated grant IDs, digest-only credential storage, revocation, RFC3339 expiry,
   and start-inclusive/end-exclusive access windows.
 - An authoritative, revisioned private grant envelope: complete grant metadata persists
@@ -89,7 +104,7 @@ or other edge host and keeps the policy layer easy to test. The recommended prod
 is:
 
 - FastAPI for the local policy/API node;
-- Vite + React + TypeScript for the offline-capable owner console;
+- Vite + React + TypeScript for the loopback owner console;
 - Arduino/PlatformIO for the ESP32 bridge;
 - Matterbridge/matter.js only where the virtual Matter RVC demo needs it;
 - OpenAI Responses API with GPT-5.6 structured outputs for vision-to-housefile proposals,
@@ -99,7 +114,16 @@ The model adapter and provider-free contract tests are implemented. A live synth
 GPT-5.6 quality/cost evaluation is still required before calling the extraction flow
 demo-proven. The geometry/materialization proof uses only unmistakably synthetic temporary
 fixtures, does not make model-quality claims, and is not wired into the live API. The
-simulated appliance proof likewise proves no physical hardware behavior.
+simulated appliance proof likewise proves no physical hardware behavior. The console has
+automated backend contract, frontend interaction, type/build, and accessibility coverage,
+and its final human visual recheck is complete. The accepted recheck covered the loading
+dwell, gold/crimson semantic separation, and blueprint label containment. The implemented
+loopback-console delivery gate is `pass`; this is not broad browser/device validation and
+does not make the broader prototype deployed, submission-ready, or physically proven.
+A read-only review found a reusable AuroraOS local-Vault runner pattern, but there is no
+Threshold-specific approved credential injector. Building that narrow runner and approving
+its Vault path/read and one direct Responses call remain a separate operator-gated wave;
+headless Codex may orchestrate work but is not the evaluation transport.
 See [`docs/BUILD-WEEK.md`](docs/BUILD-WEEK.md).
 
 ## Quickstart (synthetic demo only)
@@ -136,8 +160,9 @@ claimed.
 ### Owner grant workflow
 
 For API-created grants, generate a third distinct local token and retain it as
-`THS_NEW_GRANT_TOKEN`; the server receives it only in a masked header, stores its digest,
-and never returns the credential. Issue a synthetic grant with:
+`THS_NEW_GRANT_TOKEN`; the server receives it only in a dedicated request header from a
+masked input, stores its digest, and never returns the credential. Issue a synthetic grant
+with:
 
 ```bash
 curl --fail-with-body -X POST http://127.0.0.1:8471/grants \
@@ -180,6 +205,31 @@ durable transition fails, the process keeps denying while TRIPPED and the server
 re-arm. The latch itself is in memory and is not coordinated across workers or processes;
 the persisted suspended grant state is the only restart proof. Run this pre-alpha API with
 one worker.
+
+### Owner console (loopback development only)
+
+With Node.js 22.13 or newer, install the console's exact committed dependency graph and
+start the fixed loopback Vite server:
+
+```bash
+cd console
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Vite proxies `/api` to the node at
+`http://127.0.0.1:8471`; the backend accepts that one development origin plus same-origin
+or origin-less owner requests. It never emits wildcard CORS. Enter the owner token only in
+the password field. It is held in React memory for the page lifetime and cleared by
+**Lock** or reload; do not use browser storage, URL parameters, screenshots, or recordings
+for credentials.
+
+The console loads a credential-free snapshot, renders the server's current synthetic
+housefile blueprint, public grant projections, bounded ledger events, and truthful
+interlock/display state. Issue sends a separately generated grant credential once in the
+dedicated request header from a masked input and clears the field; the API persists only
+its digest. `TRIPPED` remains a simulated software state, re-arm never restores suspended
+grants, and no console action proves relay, motion, physical stopping, or certified safety.
 
 The node listens on `127.0.0.1:8471` by default. It writes its private ledger and grant
 envelope under ignored `data/` storage unless `THS_LEDGER_PATH` and
@@ -329,7 +379,8 @@ schema/        canonical THS-0.1, private vision-proposal, and geometry JSON Sch
 src/threshold/ policy core, grants, API, adapters, hardware, and capture modules
 tests/         unit/API/security tests
 scripts/       mock robot and public-release scan
-reference/     non-runnable JSX visual reference for the future console
+console/       exact-pinned React/Vite/TypeScript loopback owner console
+reference/     non-runnable JSX visual reference retained for provenance
 ```
 
 ## Safety and disclosure

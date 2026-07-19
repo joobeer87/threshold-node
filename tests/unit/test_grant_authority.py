@@ -111,6 +111,47 @@ def test_restrictive_states_persist_across_restart(tmp_path, transition, expecte
     assert restarted.grants[item.id].status == expected
 
 
+@pytest.mark.parametrize(
+    "time_policy",
+    [
+        {"expires": timestamp(NOW)},
+        {
+            "window": (
+                f"{timestamp(NOW - timedelta(minutes=30))}/{timestamp(NOW)}"
+            )
+        },
+    ],
+    ids=("expiry", "window-end"),
+)
+def test_snapshot_persists_first_observed_expiry_across_restart(
+    tmp_path,
+    time_policy,
+):
+    current = authority(tmp_path)
+    item = grant(
+        "g-owner-observed-expiry",
+        issued=timestamp(NOW - timedelta(hours=1)),
+        **time_policy,
+    )
+    current.issue(item, now=NOW - timedelta(hours=1))
+
+    projected = current.snapshot(now=NOW)
+
+    assert projected[item.id].status == GrantStatus.EXPIRED
+    assert current.grants[item.id].status == GrantStatus.EXPIRED
+    event = current.ledger.read()[0]
+    assert event["ts"] == timestamp(NOW)
+    assert event["type"] == EventType.DENY.value
+    assert event["agent"] == item.id
+    assert event["detail"] == "owner projection observed: grant_expired"
+    assert event["grant_revision"] == 2
+    assert isinstance(event["transaction"], str)
+
+    restarted = authority(tmp_path)
+    restarted.ensure_ready(now=NOW)
+    assert restarted.grants[item.id].status == GrantStatus.EXPIRED
+
+
 def test_pending_issue_without_receipt_never_becomes_effective(tmp_path, monkeypatch):
     current = authority(tmp_path)
 

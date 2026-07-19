@@ -44,14 +44,19 @@ access, and the video limit before making the final choice.
 5. The currently runnable software path shows terminal/receipt fallbacks and a latched trip
    that durably suspends grants. A Jetson-connected I/O rig and physical stop control remain
    future evidence and must not be inferred from the simulation.
+6. The loopback owner console renders the synthetic blueprint, public grant projections,
+   bounded ledger, and prominent simulated `TRIPPED` state, with grant issue/revoke. The
+   owner accepted the corrected visual review on 2026-07-14; footage still requires the
+   separate privacy and evidence checks.
 
 The memorable object should be the physical threshold: the model may propose, but it
 cannot bypass deterministic validation, owner confirmation, or the permission gate.
 
 ## Implementation
 
-The edge node uses FastAPI and Pydantic. The planned owner console uses Vite, React, and
-TypeScript. The hardware path uses an ESP32 bridge with Arduino or PlatformIO. A virtual
+The edge node uses FastAPI and Pydantic. The implemented owner console uses exact-pinned
+Vite, React, TypeScript, and Lucide packages with a committed npm lockfile. The hardware
+path uses an ESP32 bridge with Arduino or PlatformIO. A virtual
 Matter RVC is optional; the simulated agent and real I/O rig are enough for the primary
 demo.
 
@@ -98,16 +103,31 @@ restart with fail-closed ledger-bound recovery, and IANA quiet hours deny comman
 blocking scoped reads. The private store and ledger are a pair; neither is a public artifact
 or tamper-evident record.
 
+The owner-authenticated API now exposes `GET /owner/status` and one credential-free
+`GET /owner/snapshot` containing the server's current synthetic housefile, public grant
+projections, bounded newest-first ledger events, and truthful health/interlock/display
+state. The React console covers locked/loading/error/retry/ready states, blueprint, grant
+issue/revoke, ledger, and simulated `TRIPPED` handling. The owner and new-grant tokens stay
+in page memory and headers only. Owner routes permit same-origin, origin-less clients, or
+exactly `http://127.0.0.1:5173`; there is no wildcard CORS. Automated backend/frontend
+contract, interaction, build/type, and accessibility checks are present. The owner accepted
+the corrected loading duration, semantic colors, and label containment on 2026-07-14, so
+the implemented loopback-console delivery gate is `pass`.
+
 The GPT-5.6 request adapter, strict proposal validator, and digest-bound owner decision are
 implemented and provider-free tested. A live synthetic model quality, cost, latency, and
 token-use evaluation has not been run, so THS-0021 is complete as a guarded adapter but is
-not demo-proven model evidence. THS-0022 now emits a canonical digest-bound fixed geometry
-from explicit order. THS-0023 validates an exact explicit review and atomically advances an
-unmistakably synthetic temporary housefile under local revision compare-and-swap. That
-proof is not observed geometry, a real-house workflow, or live server state. Real-dwelling
-materialization review, the live owner console, robot adapters, hardware bridge, and the
-complete submission demo still need to be built and tested. The repository should only
-claim a capability after its code and demo evidence exist.
+not demo-proven model evidence. A read-only AuroraOS review identified a reusable
+process-start Vault-injection pattern, but no Threshold-specific injector was created or
+approved. THS-0024 defers its hardened sibling runner, dedicated SecretRef, one direct
+Responses call, and sanitized usage evidence to a separate L2-build/L3-execution wave;
+headless Codex is not a substitute for that transport. THS-0022 now emits a canonical
+digest-bound fixed geometry from explicit order. THS-0023 validates an exact explicit review
+and atomically advances an unmistakably synthetic temporary housefile under local revision
+compare-and-swap. That proof is not observed geometry, a real-house workflow, or live server
+state. Real-dwelling materialization review, robot adapters, hardware bridge, and the
+complete submission demo still need to be completed. The
+repository should only claim a capability after its code and demo evidence exist.
 
 Real-room footage can make the video stronger, but the source and normalized capture batch
 must stay local. Any externally published edit must pass `REAL-FOOTAGE-CHECKLIST.md`, and

@@ -120,6 +120,308 @@ def test_health_and_aurora_signature_remain_truthful():
     assert signature.json()["safety_receipt"]["secret_material_returned"] is False
 
 
+def test_owner_snapshot_is_authenticated_canonical_and_credential_free():
+    owner = {"X-Threshold-Owner-Token": OWNER_VALUE}
+    assert request("GET", "/owner/snapshot").status_code == 401
+
+    response = request(
+        "GET",
+        "/owner/snapshot",
+        params={"ledger_limit": 1},
+        headers=owner,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["housefile"]["schema"] == "ths/0.1"
+    assert body["housefile"]["rev"] == "A"
+    assert body["housefile"]["dwelling"] == {
+        "name": "Threshold Demo House (Synthetic)"
+    }
+    assert body["housefile"]["zones"][0] == {
+        "id": "kitchen",
+        "name": "Kitchen",
+        "access": "open",
+        "boundary": [0.0, 0.0, 150.0, 100.0],
+        "note": "",
+        "outdoor": False,
+    }
+    assert body["housefile"]["policies"]["quietHours"] == {
+        "start": "21:30",
+        "end": "06:30",
+        "timezone": "Etc/UTC",
+    }
+    assert body["grants"] == [
+        {
+            "id": "g-neo",
+            "name": "NEO Unit 04",
+            "kind": "humanoid",
+            "scopes": [
+                "read:layout",
+                "read:inventory",
+                "command:navigate",
+                "command:manipulate",
+            ],
+            "zones": ["kitchen", "living", "office", "utility"],
+            "window": "standing",
+            "expires": "revocable",
+            "status": "active",
+            "issued": "2026-07-13T09:12:00Z",
+        }
+    ]
+    assert body["status"]["health"] == request("GET", "/health").json()
+    assert body["status"]["display"] == {"state": "ARMED"}
+    assert body["status"]["active_grants"] == 1
+    assert len(body["ledger"]) == 1
+    assert set(body["ledger"][0]).issubset(
+        {"ts", "type", "agent", "detail", "tier"}
+    )
+
+    serialized = json.dumps(body, sort_keys=True)
+    assert OWNER_VALUE not in serialized
+    assert GRANT_VALUE not in serialized
+    assert token_digest(GRANT_VALUE) not in serialized
+    assert "credential" not in serialized
+    assert "transaction" not in serialized
+    assert "grant_revision" not in serialized
+
+
+def test_owner_status_tracks_simulated_trip_without_restoring_credentials():
+    owner = {"X-Threshold-Owner-Token": OWNER_VALUE}
+    initial = request("GET", "/owner/status", headers=owner)
+    assert initial.status_code == 200
+    assert initial.json()["health"]["interlock_state"] == "ARMED"
+    assert initial.json()["display"] == {"state": "ARMED"}
+    assert initial.json()["active_grants"] == 1
+
+    assert request("POST", "/sim/interlock/trip", headers=owner).status_code == 200
+    tripped = request("GET", "/owner/status", headers=owner)
+
+    assert tripped.status_code == 200
+    assert tripped.json()["health"]["interlock_state"] == "TRIPPED"
+    assert tripped.json()["display"] == {"state": "TRIPPED"}
+    assert tripped.json()["active_grants"] == 0
+
+
+@pytest.mark.parametrize(
+    ("path", "time_policy"),
+    [
+        ("/owner/status", {"expires": timestamp(NOW)}),
+        (
+            "/owner/snapshot",
+            {
+                "window": (
+                    f"{timestamp(NOW - timedelta(minutes=30))}/{timestamp(NOW)}"
+                )
+            },
+        ),
+    ],
+    ids=("status-expiry", "snapshot-window-end"),
+)
+def test_owner_projection_is_first_observer_of_durable_expiry(path, time_policy):
+    item = Grant(
+        "g-owner-observed-expiry",
+        "Synthetic Owner-Observed Expiry Agent",
+        "agent",
+        (Scope.READ_LAYOUT,),
+        ("kitchen",),
+        credential_digest=token_digest(NEW_GRANT_VALUE),
+        **time_policy,
+    )
+    persist_grant(item, issued_at=NOW - timedelta(hours=1))
+
+    response = request(
+        "GET",
+        path,
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    status = body if path == "/owner/status" else body["status"]
+    assert status["active_grants"] == 1
+    assert server.AUTHORITY.grants[item.id].status == GrantStatus.EXPIRED
+    if path == "/owner/snapshot":
+        projected = next(
+            grant for grant in body["grants"] if grant["id"] == item.id
+        )
+        assert projected["status"] == GrantStatus.EXPIRED.value
+
+    event = server.LEDGER.read()[0]
+    assert event["type"] == EventType.DENY.value
+    assert event["agent"] == item.id
+    assert event["detail"] == "owner projection observed: grant_expired"
+
+    restarted = GrantAuthority(
+        server.FILE,
+        GrantMetadataStore(server.SETTINGS.grant_store_path),
+        JsonlLedger(server.SETTINGS.ledger_path),
+    )
+    restarted.ensure_ready(now=NOW)
+    assert restarted.grants[item.id].status == GrantStatus.EXPIRED
+
+
+def test_owner_projection_fails_closed_when_expiry_cannot_be_committed(monkeypatch):
+    item = Grant(
+        "g-owner-expiry-failure",
+        "Synthetic Owner Expiry Failure Agent",
+        "agent",
+        (Scope.READ_LAYOUT,),
+        ("kitchen",),
+        expires=timestamp(NOW),
+        credential_digest=token_digest(NEW_GRANT_VALUE),
+    )
+    persist_grant(item, issued_at=NOW - timedelta(hours=1))
+
+    def fail_append(_prepared):
+        raise OSError("synthetic owner expiry append failure")
+
+    monkeypatch.setattr(server.AUTHORITY.ledger, "append_prepared", fail_append)
+    response = request(
+        "GET",
+        "/owner/status",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "grant authority unavailable"}
+    assert "active_grants" not in response.text
+
+
+@pytest.mark.parametrize("ledger_limit", [0, 1001])
+def test_owner_snapshot_ledger_limit_is_bounded(ledger_limit):
+    response = request(
+        "GET",
+        "/owner/snapshot",
+        params={"ledger_limit": ledger_limit},
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+    assert response.status_code == 422
+    assert response.json() == {"detail": "request validation failed"}
+
+
+def test_owner_snapshot_fails_closed_when_ledger_is_unavailable(monkeypatch, tmp_path):
+    unavailable = tmp_path / "ledger-directory"
+    unavailable.mkdir()
+    monkeypatch.setattr(server, "LEDGER", JsonlLedger(unavailable))
+
+    response = request(
+        "GET",
+        "/owner/snapshot",
+        headers={"X-Threshold-Owner-Token": OWNER_VALUE},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "audit ledger unavailable"}
+    assert "housefile" not in response.text
+    assert str(unavailable) not in response.text
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "null",
+        "*",
+        "http://localhost:5173",
+        "http://127.0.0.1.evil.test:5173",
+        "https://127.0.0.1:5173",
+    ],
+)
+def test_owner_routes_reject_non_exact_origins(origin):
+    response = request(
+        "GET",
+        "/owner/snapshot",
+        headers={
+            "Origin": origin,
+            "X-Threshold-Owner-Token": OWNER_VALUE,
+        },
+    )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "owner origin not allowed"}
+    assert "access-control-allow-origin" not in response.headers
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/owner/status"),
+        ("GET", "/ledger"),
+        ("POST", "/grants"),
+        ("POST", "/grants/g-neo/revoke"),
+        ("POST", "/sim/interlock/trip"),
+        ("POST", "/sim/interlock/rearm"),
+    ],
+)
+def test_every_owner_route_rejects_a_foreign_origin_before_processing(method, path):
+    response = request(
+        method,
+        path,
+        headers={
+            "Origin": "https://synthetic-untrusted.example",
+            "X-Threshold-Owner-Token": OWNER_VALUE,
+        },
+    )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "owner origin not allowed"}
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["http://threshold.test", "http://127.0.0.1:5173"],
+)
+def test_owner_routes_allow_only_same_or_fixed_console_origin(origin):
+    response = request(
+        "GET",
+        "/owner/status",
+        headers={
+            "Origin": origin,
+            "X-Threshold-Owner-Token": OWNER_VALUE,
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "*" not in json.dumps(dict(response.headers))
+
+
+def test_owner_console_preflight_is_exact_and_header_bounded():
+    origin = "http://127.0.0.1:5173"
+    allowed = request(
+        "OPTIONS",
+        "/owner/snapshot",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "X-Threshold-Owner-Token",
+        },
+    )
+    forbidden = request(
+        "OPTIONS",
+        "/owner/snapshot",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Authorization",
+        },
+    )
+
+    assert allowed.status_code == 204
+    assert allowed.headers["access-control-allow-origin"] == origin
+    assert allowed.headers["access-control-allow-methods"] == "GET"
+    assert "*" not in json.dumps(dict(allowed.headers))
+    assert forbidden.status_code == 403
+    assert forbidden.json() == {"detail": "owner headers not allowed"}
+
+
+def test_foreign_origin_does_not_change_public_health_access():
+    response = request(
+        "GET",
+        "/health",
+        headers={"Origin": "https://synthetic-untrusted.example"},
+    )
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_owner_and_grant_auth_boundaries_are_separate():
     payload = issue_payload()
     no_owner = request(
@@ -1014,10 +1316,14 @@ def test_public_openapi_schema_has_no_credential_digest():
     assert "/grants/{grant_id}/revoke" in document["paths"]
     assert "/sim/interlock/trip" in document["paths"]
     assert "/sim/interlock/rearm" in document["paths"]
+    assert "/owner/snapshot" in document["paths"]
+    assert "/owner/status" in document["paths"]
 
     for path, method, header in [
         ("/housefile", "get", "X-Threshold-Grant-Token"),
         ("/ledger", "get", "X-Threshold-Owner-Token"),
+        ("/owner/snapshot", "get", "X-Threshold-Owner-Token"),
+        ("/owner/status", "get", "X-Threshold-Owner-Token"),
         ("/grants", "post", "X-Threshold-New-Grant-Token"),
         ("/sim/interlock/trip", "post", "X-Threshold-Owner-Token"),
         ("/sim/interlock/rearm", "post", "X-Threshold-Owner-Token"),
